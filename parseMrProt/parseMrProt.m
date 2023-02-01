@@ -108,6 +108,6 @@ for ii = 1:numel(mrProtLocationsCR)-2                   % minus 2 accounts for a
         end
 end
 
-zeroList = zeroList(1:end-1); %strip last CR for string consistency
+zeroList = strtrim(zeroList);
 
 end
