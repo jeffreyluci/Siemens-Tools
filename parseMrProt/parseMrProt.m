@@ -48,8 +48,14 @@ mrProt = struct;
 %create text list that records which arrays' numbering start at 0 instead of 1
 zeroList = '';
 
-%extract text of proprietary tag (0029,1020)
-tagFullText = char(hdr.Private_0029_1020)';
+%extract text of proprietary tag (0029,1020) or (0029,1120) - whichever exists
+if isfield(hdr, 'Private_0029_1020')
+    tagFullText = char(hdr.Private_0029_1020)';
+elseif isfield(hdr, 'Private_0029_1120')
+    tagFullText = char(hdr.Private_0029_1120)';
+else
+    error('No DICOM tag with MrProt located.');
+end
 
 %find beginning of mrprot in the text stream
 locationsCR  = strfind(tagFullText, newline);
@@ -108,6 +114,9 @@ for ii = 1:numel(mrProtLocationsCR)-2                   % minus 2 accounts for a
         end
 end
 
-zeroList = strtrim(zeroList);
+% make sure zeroList exists, even if empty
+if ~isempty(zeroList)
+    zeroList = strtrim(zeroList);
+end
 
 end
