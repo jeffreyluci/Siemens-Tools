@@ -53,36 +53,11 @@ end
 
 clear('inputArg');
 
-
-% if ~isstruct(inputArg)
-%     if isdicom(inputArg)
-%         hdr = dicominfo(inputArg);
-%         if isfield(hdr, 'AcquisitionContextSequence') %only exists in enhanced DICOMs
-%             error([inputArg, ' is an enhanced DICOM. MrProt is not included.']);
-%         end
-%     end
-% else
-%     if ~isfield(inputArg, 'Format')
-%         error('This does not appear to be a DICOM header structure.');
-%     end
-%     hdr = inputArg;
-%     clear('inputArg');
-% end
-
 %initialize mrProt
 mrProt = struct;
 
 %create text list that records which arrays' numbering start at 0 instead of 1
 zeroList = '';
-
-%extract text of proprietary tag (0029,1020) or (0029,1120) - whichever exists
-% if isfield(hdr, 'Private_0029_1020')
-%     tagFullText = char(hdr.Private_0029_1020)';
-% elseif isfield(hdr, 'Private_0029_1120')
-%     tagFullText = char(hdr.Private_0029_1120)';
-% else
-%     error('No DICOM tag with MrProt located.');
-% end
 
 %find beginning of mrprot in the text stream
 locationsCR  = strfind(tagFullText, newline);
