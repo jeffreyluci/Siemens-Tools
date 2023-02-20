@@ -33,7 +33,7 @@ function [mrProt, zeroList] = parseMrProt(inputArg)
 if ischar(inputArg)
     if contains(inputArg, 'ASCCONV')
         tagFullText = inputArg;
-    elseif isdicom(inputArg, 'file')
+    elseif isdicom(inputArg)
         hdr = dicominfo(inputArg);
     end
 else
