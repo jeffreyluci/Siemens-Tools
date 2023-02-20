@@ -208,7 +208,7 @@ if isfield(dcmHdr, 'SharedFunctionalGroupsSequence.Item_1.Private_0021_10fe')
         mrProt = char(hdr.SharedFunctionalGroupsSequence.Item_1.Private_0021_10fe.Item_1.Private_0021_1019)';
         hdr.mrProt = mrProt;
     end
-else
+elseif verbose
     disp('The proprietary section likely does not exist. Skipping.')
 end
 
