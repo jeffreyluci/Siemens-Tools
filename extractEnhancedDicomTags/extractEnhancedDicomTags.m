@@ -12,7 +12,9 @@ function hdr = extractEnhancedDicomTags(filename, verbose)
 %   true or false. The default is false.
 %
 %   It is recommended to use the function parseMrProt, but it is not
-%   necessary. See comments for source material.
+%   necessary. See comments for source material. Note that mrPort is not
+%   included in Enhanced DICOMs before XA20A, and will be skipped if it
+%   does not exist.
 
 % Written by J. Luci: jeffrey.luci@rutgers.edu
 % https://github.com/jeffreyluci/Siemens-Tools/blob/main/extractEnhancedDicomTags
@@ -67,7 +69,7 @@ dcmHdr = dicominfo(filename);
 
 %check to make sure the DICOM is an enhanced DICOM by checking for a
 %field that should always exist in an enhanced DICOM
-if ~isfield(dcmHdr, 'AcquisitionContextSequence')
+if ~isfield(dcmHdr, 'SharedFunctionalGroupsSequence')
     error([filename, ' is not an Enhanced DICOM.']);
 end
 
@@ -197,12 +199,17 @@ assignPar('SharedFunctionalGroupsSequence.Item_1.MRTransmitCoilSequence.Item_1.T
 assignPar('SharedFunctionalGroupsSequence.Item_1.MRTransmitCoilSequence.Item_1.TransmitCoilType',                                       'coils.tx.coilType'              );
 
 %PROPRIETARY SECTION
-assignPar('SharedFunctionalGroupsSequence.Item_1.Private_0021_10fe.Item_1', 'proprietary.tag0021_10fe');
-if exist('parseMrProt')
-    hdr.mrProt = parseMrProt(dcmHdr);
+%not available before XA20A, so if it doesn't exist, skip.
+if isfield(dcmHdr, 'SharedFunctionalGroupsSequence.Item_1.Private_0021_10fe')
+    assignPar('SharedFunctionalGroupsSequence.Item_1.Private_0021_10fe.Item_1', 'proprietary.tag0021_10fe');
+    if exist('parseMrProt')
+        hdr.mrProt = parseMrProt(dcmHdr);
+    else
+        mrProt = char(hdr.SharedFunctionalGroupsSequence.Item_1.Private_0021_10fe.Item_1.Private_0021_1019)';
+        hdr.mrProt = mrProt;
+    end
 else
-    mrProt = char(hdr.SharedFunctionalGroupsSequence.Item_1.Private_0021_10fe.Item_1.Private_0021_1019)';
-    hdr.mrProt = mrProt;
+    disp('The proprietary section likely does not exist. Skipping.')
 end
 
 %DIFFUSION SECTION
@@ -221,7 +228,7 @@ assignPar('PerFrameFunctionalGroupsSequence.Item_1.MRDiffusionSequence.Item_1.Di
             hdr = setfield(hdr, fieldName{:}, getfield(dcmHdr, dcmFieldName{:}));
         catch
             if verbose
-                disp(['The parameter ', fieldName, ' likely does not exist in the DICOM. Skipping.']);
+                disp(['The parameter ', horzcat(fieldName{:}), ' likely does not exist in the DICOM. Skipping.']);
             end
         end
 
