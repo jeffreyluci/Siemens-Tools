@@ -10,10 +10,6 @@ function [mrProt, zeroList] = parseMrProt(inputArg)
 %
 % XA and newer Siemens DICOMS are not supported as they do not include
 % MrProt in the same way. 
-%
-% Hexadecimal values are returned as character arrays (e.g. '0x1') in order 
-% to maintain/archive the correct native class rather than convert to  
-% decimal or integer classes for MATLAB support.
 % 
 % Note that field indexes may not correspond to those in the native MrProt 
 % as some Siemens arrays are numbered starting at 0, and others at 1. As a
@@ -25,22 +21,55 @@ function [mrProt, zeroList] = parseMrProt(inputArg)
 %Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
 %VERSION HISTORY:
 %20230201 - Initial Release
+%20230220 - Added sxupport for enhanced DICOMs, including the highly
+%           questionable choice by Siemens to use numbers as structure
+%           field names in some (inconsistent) cases. This made it
+%           necessary to convert hex values to decimal as opposed to
+%           maintaining the ascii encoded hex value which was the 
+%           convention in the previous version.   
 
 %check to see if the input is a dicom or a header structure
-if ~isstruct(inputArg)
-    if isdicom(inputArg)
+if ischar(inputArg)
+    if contains(inputArg, 'ASCCONV')
+        tagFullText = inputArg;
+    elseif isdicom(inputArg)
         hdr = dicominfo(inputArg);
-        if isfield(hdr, 'AcquisitionContextSequence') %only exists in enhanced DICOMs
-            error([inputArg, ' is an enhanced DICOM. MrProt is not included.']);
-        end
     end
 else
-    if ~isfield(inputArg, 'Format')
-        error('This does not appear to be a DICOM header structure.');
+    if isstruct(inputArg)
+        hdr = inputArg;
     end
-    hdr = inputArg;
-    clear('inputArg');
 end
+
+if ~exist('tagFullText', 'var')
+    if isfield(hdr, 'Private_0029_1020')
+        tagFullText = char(hdr.Private_0029_1020)';
+    elseif isfield(hdr, 'Private_0029_1120')
+        tagFullText = char(hdr.Private_0029_1120)';
+    elseif isfield(hdr, 'SharedFunctionalGroupsSequence')
+        tagFullText = char(hdr.SharedFunctionalGroupsSequence.Item_1.Private_0021_10fe.Item_1.Private_0021_1019)';
+    else
+        error('No DICOM tag with MrProt located.');
+    end
+end
+
+clear('inputArg');
+
+
+% if ~isstruct(inputArg)
+%     if isdicom(inputArg)
+%         hdr = dicominfo(inputArg);
+%         if isfield(hdr, 'AcquisitionContextSequence') %only exists in enhanced DICOMs
+%             error([inputArg, ' is an enhanced DICOM. MrProt is not included.']);
+%         end
+%     end
+% else
+%     if ~isfield(inputArg, 'Format')
+%         error('This does not appear to be a DICOM header structure.');
+%     end
+%     hdr = inputArg;
+%     clear('inputArg');
+% end
 
 %initialize mrProt
 mrProt = struct;
@@ -49,13 +78,13 @@ mrProt = struct;
 zeroList = '';
 
 %extract text of proprietary tag (0029,1020) or (0029,1120) - whichever exists
-if isfield(hdr, 'Private_0029_1020')
-    tagFullText = char(hdr.Private_0029_1020)';
-elseif isfield(hdr, 'Private_0029_1120')
-    tagFullText = char(hdr.Private_0029_1120)';
-else
-    error('No DICOM tag with MrProt located.');
-end
+% if isfield(hdr, 'Private_0029_1020')
+%     tagFullText = char(hdr.Private_0029_1020)';
+% elseif isfield(hdr, 'Private_0029_1120')
+%     tagFullText = char(hdr.Private_0029_1120)';
+% else
+%     error('No DICOM tag with MrProt located.');
+% end
 
 %find beginning of mrprot in the text stream
 locationsCR  = strfind(tagFullText, newline);
@@ -80,10 +109,27 @@ mrProtLocationsCR = strfind(mrProtText, newline);
 for ii = 1:numel(mrProtLocationsCR)-2                   % minus 2 accounts for added CRs in previous block
     %select next line of text, format it, and split opposite '='
     curLine = mrProtText(mrProtLocationsCR(ii):mrProtLocationsCR(ii+1));
-    curLine = curLine(2:end-1);                        %strip out leading/trailing CR
-    curLineSplit = strtrim(strsplit(curLine, '='));
+    curLine = curLine(2:end-1);                         %strip out leading/trailing CR
 
+    %yank comments out of each line
+    curLine = strsplit(curLine, '#');
+    curLine = strtrim(curLine{1});
+    if isempty(curLine)
+        continue;
+    end
+
+    %begin parsing now
+    curLineSplit = strtrim(strsplit(curLine, '='));
     assignmentVar = strsplit(curLineSplit{1}, '.');
+
+    %fix Siemens STUPID use of numbers as field names
+    % add number in square brackets to end of last fieldname to maintain
+    % consistency with every other time Siemens uses an arrayed field.
+    if ~isnan(str2double(assignmentVar{end}))
+        assignmentVar{end-1} = [assignmentVar{end-1},'[', assignmentVar{end}, ']'];
+        assignmentVar(end) = [];
+    end
+
     for jj = 1:numel(assignmentVar)
         %parse structure format of left side assignment
         if contains(assignmentVar{1,jj}, '[')
@@ -105,13 +151,19 @@ for ii = 1:numel(mrProtLocationsCR)-2                   % minus 2 accounts for a
         continue
     end
 
-        %Determine if right side is string or not, make appropriate assigment
-        if contains(curLineSplit{2}, '"') || contains(curLineSplit{2}, '0x')
-            assignmentVar{end} = {1:length(curLineSplit{2})};
-            mrProt = setfield(mrProt, assignmentVar{:}, curLineSplit{2});
-        else
-            mrProt = setfield(mrProt, assignmentVar{:}, str2double(curLineSplit{2}));
-        end
+    %Convert hex to decimal
+    if contains(curLineSplit{2}, '0x')
+        curLineSplit{2} = {num2str(hex2dec(curLineSplit{2}))};
+    end
+
+
+    %Determine if right side is string or not, make appropriate assigment
+    if contains(curLineSplit{2}, '"')
+        assignmentVar{end} = {1:length(curLineSplit{2})};
+        mrProt = setfield(mrProt, assignmentVar{:}, curLineSplit{2});
+    else
+        mrProt = setfield(mrProt, assignmentVar{:}, str2double(curLineSplit{2}));
+    end
 end
 
 % make sure zeroList exists, even if empty
