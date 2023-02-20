@@ -1,3 +1,5 @@
+#parseMrProt
+
 parseMrProt - Parses MrProt from a DICOM acquired on a Siemens VB, VD,
 VE, or XA line MRI scanners.
 
