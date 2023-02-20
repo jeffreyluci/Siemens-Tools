@@ -10,8 +10,12 @@ function hdr = extractEnhancedDicomTags(filename, verbose)
 %   header = extractEnhancedDicomTags(filename, verbose) enables the user
 %   to request verbose feedback. The argument verbose should be a logical 
 %   true or false. The default is false.
+%
+%   It is recommended to use the function parseMrProt, but it is not
+%   necessary. See comments for source material.
 
 % Written by J. Luci: jeffrey.luci@rutgers.edu
+% https://github.com/jeffreyluci/Siemens-Tools/blob/main/extractEnhancedDicomTags
 % Version History:
 % 20200518: First release
 % 20200522: Fixed typos that created redundant fields, added help text
