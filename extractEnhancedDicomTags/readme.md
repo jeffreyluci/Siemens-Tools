@@ -15,7 +15,7 @@
    It is recommended to use the function [parseMrProt](https://github.com/jeffreyluci/Siemens-Tools/tree/main/parseMrProt), but it is not
    necessary. 
    
-Author: J. Luci, jeffrey.luci@rutgers.edu
+Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
  
 Version History:
 
