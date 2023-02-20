@@ -47,10 +47,10 @@ if ~exist('tagFullText', 'var')
         tagFullText = char(hdr.Private_0029_1020)';
     elseif isfield(hdr, 'Private_0029_1120')
         tagFullText = char(hdr.Private_0029_1120)';
-    elseif isfield(hdr, 'SharedFunctionalGroupsSequence')
+    elseif isfield(hdr, 'SharedFunctionalGroupsSequence.Item_1.Private_0021_10fe')
         tagFullText = char(hdr.SharedFunctionalGroupsSequence.Item_1.Private_0021_10fe.Item_1.Private_0021_1019)';
     else
-        error('No DICOM tag with MrProt located.');
+        error(['No DICOM tag with MrProt located.', newline, 'Possibly pre-XA20 or not enhanced data?']);
     end
 end
 
