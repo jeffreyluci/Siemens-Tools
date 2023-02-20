@@ -17,10 +17,12 @@
  fields are usually nested below a parent field name.
  
  Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
- https://github.com/jeffreyluci/Siemens-Tools/tree/main/parseMrProt
- VERSION HISTORY:
- 20230201 - Initial Release
- 20230220 - Added sxupport for enhanced DICOMs, including the highly
+
+VERSION HISTORY:
+
+20230201 - Initial Release
+
+20230220 - Added sxupport for enhanced DICOMs, including the highly
             questionable choice by Siemens to use numbers as structure
             field names in some (inconsistent) cases. This made it
             necessary to convert hex values to decimal as opposed to
