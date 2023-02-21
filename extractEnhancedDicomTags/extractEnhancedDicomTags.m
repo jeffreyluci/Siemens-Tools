@@ -11,13 +11,22 @@ function hdr = extractEnhancedDicomTags(filename, verbose)
 %   to request verbose feedback. The argument verbose should be a logical 
 %   true or false. The default is false.
 %
+%   If mrProt exists, it will be included in the structre in the field named
+%   "mrProt". If parseMrProt is installed (see below), the field mrProt
+%   will be a parsed structure. If not, the entire contents of the proprietary
+%   tag will be included as plain text, which will include more than mrProt.
+% 
+%   Note that mrProt is not archived in XA DICOMs before XA30, and as a
+%   result, will not be included in the returned structure.
+% 
 %   It is recommended to use the function parseMrProt, but it is not
 %   necessary. See comments for source material. Note that mrPort is not
 %   included in Enhanced DICOMs before XA20A, and will be skipped if it
 %   does not exist.
 
 % Written by J. Luci: jeffrey.luci@rutgers.edu
-% https://github.com/jeffreyluci/Siemens-Tools/blob/main/extractEnhancedDicomTags
+% https://github.com/jeffreyluci/Siemens-Tools/tree/main/extractEnhancedDicomTags
+% https://github.com/jeffreyluci/Siemens-Tools/tree/main/parseMrProt
 % Version History:
 % 20200518: First release
 % 20200522: Fixed typos that created redundant fields, added help text
@@ -199,7 +208,7 @@ assignPar('SharedFunctionalGroupsSequence.Item_1.MRTransmitCoilSequence.Item_1.T
 assignPar('SharedFunctionalGroupsSequence.Item_1.MRTransmitCoilSequence.Item_1.TransmitCoilType',                                       'coils.tx.coilType'              );
 
 %PROPRIETARY SECTION
-%not available before XA20A, so if it doesn't exist, skip.
+%not available before XA30A, so if it doesn't exist, skip.
 if isfield(dcmHdr, 'SharedFunctionalGroupsSequence.Item_1.Private_0021_10fe')
     assignPar('SharedFunctionalGroupsSequence.Item_1.Private_0021_10fe.Item_1', 'proprietary.tag0021_10fe');
     if exist('parseMrProt')

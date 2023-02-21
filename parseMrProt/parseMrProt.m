@@ -10,6 +10,9 @@ function [mrProt, zeroList] = parseMrProt(inputArg)
 % extractEnahncedDicomTags). The resulting structure includes all fields 
 % included in MrProt, nested and indexed.
 % 
+% Note that mrProt is not archived in XA DICOMs before XA30, and will return
+% an error if used with this function.
+% 
 % Note that field indicies may not correspond to those in the native MrProt 
 % as some Siemens arrays are numbered starting at 0, and others at 1. As a
 % result, all indicies are renumbered from 1 to comply with MATLAB
@@ -47,10 +50,10 @@ if ~exist('tagFullText', 'var')
         tagFullText = char(hdr.Private_0029_1020)';
     elseif isfield(hdr, 'Private_0029_1120')
         tagFullText = char(hdr.Private_0029_1120)';
-    elseif isfield(hdr, 'SharedFunctionalGroupsSequence.Item_1.Private_0021_10fe')
+    elseif isfield(hdr.SharedFunctionalGroupsSequence.Item_1.Private_0021_10fe.Item_1, 'Private_0021_1019')
         tagFullText = char(hdr.SharedFunctionalGroupsSequence.Item_1.Private_0021_10fe.Item_1.Private_0021_1019)';
     else
-        error(['No DICOM tag with MrProt located.', newline, 'Possibly pre-XA20 or not enhanced data?']);
+        error(['No DICOM tag with MrProt located.', newline, 'Possibly pre-XA30 or not enhanced data?']);
     end
 end
 
