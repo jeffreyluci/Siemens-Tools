@@ -27,7 +27,8 @@
    
 Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
  
-Version History:
+## Version History:
+
 20200518: First release
 
 20200522: Fixed typos that created redundant fields, added help text
