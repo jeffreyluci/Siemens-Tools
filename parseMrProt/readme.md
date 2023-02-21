@@ -19,17 +19,17 @@
  return  zeroList includes a list of all the renumbered fields. These 
  fields are usually nested below a parent field name.
  
- Test data are available to confirm correct function.
+[Test data](https://github.com/jeffreyluci/Siemens-Tools/tree/main/Test%20Data) are avilable to confirm proper function.
  
- Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
+Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
 
-VERSION HISTORY:
+## Version History:
 
 20230201 - Initial Release
 
 20230220 - Added sxupport for enhanced DICOMs, including the highly
-            questionable choice by Siemens to use numbers as structure
-            field names in some (inconsistent) cases. This made it
-            necessary to convert hex values to decimal as opposed to
-            maintaining the ascii encoded hex value which was the 
-            convention in the previous version.   
+           questionable choice by Siemens to use numbers as structure
+           field names in some (inconsistent) cases. This made it
+           necessary to convert hex values to decimal as opposed to
+           maintaining the ascii encoded hex value which was the 
+           convention in the previous version.   
