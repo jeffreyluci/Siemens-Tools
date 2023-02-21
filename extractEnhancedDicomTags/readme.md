@@ -11,6 +11,14 @@
    header = extractEnhancedDicomTags(filename, verbose) enables the user
    to request verbose feedback. The argument verbose should be a logical 
    true or false. The default is false.
+   
+   If mrProt exists, it will be included in the structre in the field named
+   "mrProt". If parseMrProt is installed (see below), the field mrProt
+   will be a parsed structure. If not, the entire contents of the proprietary
+   tag will be included as plain text, which will include more than mrProt.
+   
+   Note that mrProt is not archived in XA DICOMs before XA30, and as a
+   result, will not be included in the returned structure.
 
    It is recommended to use the function [parseMrProt](https://github.com/jeffreyluci/Siemens-Tools/tree/main/parseMrProt), but it is not
    necessary. 

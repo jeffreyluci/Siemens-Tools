@@ -9,12 +9,17 @@
  DICOM header as provided by the MATLAB function dicominfo. The resulting 
  structure includes all fields included in MrProt, nested and indexed.
  
+ Note that mrProt is not archived in XA DICOMs before XA30, and will return
+ an error if used with this function.
+ 
  Note that field indexes may not correspond to those in the native MrProt 
  as some Siemens arrays are numbered starting at 0, and others at 1. As a
  result, all indexes are renumbered from 1 to comply with MATLAB
  requirements. Those that are renumbered will be off by one. The optional 
  return  zeroList includes a list of all the renumbered fields. These 
  fields are usually nested below a parent field name.
+ 
+ Test data are available to confirm correct function.
  
  Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
 
