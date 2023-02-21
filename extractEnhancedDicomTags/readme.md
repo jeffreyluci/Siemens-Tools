@@ -23,23 +23,19 @@
    It is recommended to use the function [parseMrProt](https://github.com/jeffreyluci/Siemens-Tools/tree/main/parseMrProt), but it is not
    necessary. 
    
+   [Test data](https://github.com/jeffreyluci/Siemens-Tools/tree/main/Test%20Data) are avilable to confirm proper function.
+   
 Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
  
 Version History:
-
 20200518: First release
-
 20200522: Fixed typos that created redundant fields, added help text
-
 20200528: Added verbosity option
-
 20220119: Switched to try/catch format to account for different tags
-existing or not depending on sequence/recon/etc options 
-selected at scan time - created assignPar function
-
+          existing or not depending on sequence/recon/etc options 
+          selected at scan time - created assignPar function
 20220127: Fixed dynamic field naming problem and removed eval line in
-           assignPar function. Cleared ToDo list.
-
+          assignPar function. Cleared ToDo list.
 20220120: Added extraction of mrProt into structure using companion
-           function parseMrProt, if it exists. If not, mrProt is extracted
-           as plain text. 
+          function parseMrProt, if it exists. If not, mrProt is extracted
+          as plain text. 
