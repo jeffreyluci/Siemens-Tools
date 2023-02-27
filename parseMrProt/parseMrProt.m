@@ -9,9 +9,14 @@ function [mrProt, zeroList] = parseMrProt(inputArg)
 % the DICOM tag (which supports input from the function 
 % extractEnahncedDicomTags). The resulting structure includes all fields 
 % included in MrProt, nested and indexed.
+%
+% Parsing is most robust when the DICOM file location is given. This is the
+% preferred method of using this function since the other two can fail in
+% certain situaions and use cases. If mrProt exists in the DICOM file, 
+% parseMrProt should reliably find it. 
 % 
-% Note that mrProt is not archived in XA DICOMs before XA30, and will return
-% an error if used with this function.
+% Note that if mrProt is not archived in the input argument, parseMrProt 
+% will return an error.
 % 
 % Note that field indicies may not correspond to those in the native MrProt 
 % as some Siemens arrays are numbered starting at 0, and others at 1. As a
@@ -30,14 +35,24 @@ function [mrProt, zeroList] = parseMrProt(inputArg)
 %            field names in some (inconsistent) cases. This made it
 %            necessary to convert hex values to decimal as opposed to
 %            maintaining the ascii encoded hex value which was the 
-%            convention in the previous version.   
+%            convention in the previous version.
+% 20230227 - Returned support for maintaining class of hexadecimal values
+%            that was temporarily removed in the last version. Improved 
+%            tag searching in DICOM file. If a DICOM has mrProt, then this 
+%            method should find it always. Therefore, providing the DICOM
+%            filename is now the preferred method to parse.
 
 %check to see if the input is a dicom or a header structure
 if ischar(inputArg)
     if contains(inputArg, 'ASCCONV')
         tagFullText = inputArg;
     elseif isdicom(inputArg)
-        hdr = dicominfo(inputArg);
+        fileDump = readFullFile(inputArg);
+        if ~contains(fileDump, 'ASCCONV')
+            error(['No DICOM tag with MrProt located.', newline, 'Possibly de-identified?']);
+        else
+            tagFullText = fileDump;
+        end
     end
 else
     if isstruct(inputArg)
@@ -53,9 +68,11 @@ if ~exist('tagFullText', 'var')
     elseif isfield(hdr.SharedFunctionalGroupsSequence.Item_1.Private_0021_10fe.Item_1, 'Private_0021_1019')
         tagFullText = char(hdr.SharedFunctionalGroupsSequence.Item_1.Private_0021_10fe.Item_1.Private_0021_1019)';
     else
-        error(['No DICOM tag with MrProt located.', newline, 'Possibly pre-XA30 or not enhanced data?']);
+        error(['No DICOM tag with MrProt located.', newline, 'Possibly de-identified or DICOM tag renamed?']);
     end
 end
+
+
 
 clear('inputArg');
 
@@ -130,14 +147,10 @@ for ii = 1:numel(mrProtLocationsCR)-2                   % minus 2 accounts for a
         continue
     end
 
-    %Convert hex to decimal
-    if contains(curLineSplit{2}, '0x')
-        curLineSplit{2} = {num2str(hex2dec(curLineSplit{2}))};
-    end
-
 
     %Determine if right side is string or not, make appropriate assigment
-    if contains(curLineSplit{2}, '"')
+    %process hexadecimal values as strings to maintain class
+    if contains(curLineSplit{2}, '"') || contains(curLineSplit{2}, '0x')
         assignmentVar{end} = {1:length(curLineSplit{2})};
         mrProt = setfield(mrProt, assignmentVar{:}, curLineSplit{2});
     else
@@ -149,5 +162,11 @@ end
 if ~isempty(zeroList)
     zeroList = strtrim(zeroList);
 end
+
+    function fileDump = readFullFile(inputArg)
+        fid = fopen(inputArg, 'rt');
+        fileDump = fread(fid, inf, 'uint8=>char')';
+        fclose(fid);
+    end
 
 end
