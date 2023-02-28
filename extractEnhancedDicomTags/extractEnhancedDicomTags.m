@@ -1,4 +1,4 @@
-function hdr = extractEnhancedDicomTags(filename, verbose)
+function hdr = extractEnhancedDicomTags(fileName, verbose)
 %   extractEnhancedDicomTags Parse an enhanced DICOM header into logical,
 %   human-readable struct.
 %
@@ -16,13 +16,14 @@ function hdr = extractEnhancedDicomTags(filename, verbose)
 %   will be a parsed structure. If not, the entire contents of the proprietary
 %   tag will be included as plain text, which will include more than mrProt.
 % 
-%   Note that mrProt is not archived in XA DICOMs before XA30, and as a
-%   result, will not be included in the returned structure.
+%   Note that mrProt may not be archived in DICOMs based on the specific
+%   software version, whether or not a PACS has touched the data, if is has
+%   been de-identified in a certain way, or some other unusual use cases.
+%   If mrProt does not exist, it will not be returned.
 % 
 %   It is recommended to use the function parseMrProt, but it is not
-%   necessary. See comments for source material. Note that mrPort is not
-%   included in Enhanced DICOMs before XA20A, and will be skipped if it
-%   does not exist.
+%   necessary. See comments for source material. If parseMrProt is not
+%   installed, mrProt will be returned as an unparsed character array. 
 
 % Written by J. Luci: jeffrey.luci@rutgers.edu
 % https://github.com/jeffreyluci/Siemens-Tools/tree/main/extractEnhancedDicomTags
@@ -36,14 +37,14 @@ function hdr = extractEnhancedDicomTags(filename, verbose)
 %           selected at scan time - created assignPar function
 % 20220127: Fixed dynamic field naming problem and removed eval line in
 %           assignPar function. Cleared ToDo list.
-% 20220120: Added extraction of mrProt into structure using companion
+% 20230120: Added extraction of mrProt into structure using companion
 %           function parseMrProt, if it exists. If not, mrProt is extracted
 %           as plain text. the function parseMrProt is available at:
 %           https://github.com/jeffreyluci/Siemens-Tools/tree/main/parseMrProt
+% 20230228: Improved reliability of extracting mrProt when marseMrProt is
+%           not installed. Various minor speed improvements.
 %
 %To do:
-
-
 
 
 %process verbosity for user junk
@@ -64,22 +65,22 @@ if ~islogical(verbose)
 end
 
 %check to make sure file exists
-if ~exist(filename, 'file')
-    error([filename, ' does not exist.']);
+if ~exist(fileName, 'file')
+    error([fileName, ' does not exist.']);
 end
 
 %check to make sure file is a DICOM
-if ~isdicom(filename)
-    error([filename, ' is not a DICOM.']);
+if ~isdicom(fileName)
+    error([fileName, ' is not a DICOM.']);
 end
 
 %read in the DICOM header
-dcmHdr = dicominfo(filename);
+dcmHdr = dicominfo(fileName);
 
 %check to make sure the DICOM is an enhanced DICOM by checking for a
 %field that should always exist in an enhanced DICOM
 if ~isfield(dcmHdr, 'SharedFunctionalGroupsSequence')
-    error([filename, ' is not an Enhanced DICOM.']);
+    error([fileName, ' is not an Enhanced DICOM.']);
 end
 
 %Initialize hdr struct with tags that should always exist, then switch to
@@ -208,15 +209,23 @@ assignPar('SharedFunctionalGroupsSequence.Item_1.MRTransmitCoilSequence.Item_1.T
 assignPar('SharedFunctionalGroupsSequence.Item_1.MRTransmitCoilSequence.Item_1.TransmitCoilType',                                       'coils.tx.coilType'              );
 
 %PROPRIETARY SECTION
-%not available before XA30A, so if it doesn't exist, skip.
-if isfield(dcmHdr, 'SharedFunctionalGroupsSequence.Item_1.Private_0021_10fe')
+% May not be available based on software version, whether or not it was
+% touched by a PACS, and specific exporting use cases. If it doesn't exist,
+% skip it.
+mrProt = readFullFile(fileName);
+if isfield(dcmHdr.SharedFunctionalGroupsSequence.Item_1, 'Private_0021_10fe')
     assignPar('SharedFunctionalGroupsSequence.Item_1.Private_0021_10fe.Item_1', 'proprietary.tag0021_10fe');
-    if exist('parseMrProt')
-        hdr.mrProt = parseMrProt(dcmHdr);
-    else
-        mrProt = char(hdr.SharedFunctionalGroupsSequence.Item_1.Private_0021_10fe.Item_1.Private_0021_1019)';
-        hdr.mrProt = mrProt;
+    if exist('parseMrProt', 'file')
+        hdr.mrProt = parseMrProt(mrProt);
+    else   
+        if ~isempty(mrProt)
+            hdr.mrProt.textDump = mrProt;
+        end
     end
+
+elseif ~isempty(mrProt)
+    hdr.mrProt.textDump = mrProt;
+
 elseif verbose
     disp('The proprietary section likely does not exist. Skipping.')
 end
@@ -244,6 +253,15 @@ assignPar('PerFrameFunctionalGroupsSequence.Item_1.MRDiffusionSequence.Item_1.Di
     end
 
 
+    function mrProt = readFullFile(fileName)
+        fid = fopen(fileName, 'rt');
+        fileDump = fread(fid, inf, 'uint8=>char')';
+        fclose(fid);
+        startString = strfind(fileDump, 'ASCCONV BEGIN');
+        endString   = strfind(fileDump, 'ASCCONV END');
+        mrProt  = fileDump(startString:endString+10);
+        clear('fileDump');
+    end
 
 end
 

@@ -17,8 +17,10 @@
    will be a parsed structure. If not, the entire contents of the proprietary
    tag will be included as plain text, which will include more than mrProt.
    
-   Note that mrProt is not archived in XA DICOMs before XA30, and as a
-   result, will not be included in the returned structure.
+   Note that mrProt may not be archived in all DICOMs based on the specific
+   software version, whether or not a PACS has touched the data, if is has
+   been de-identified in a certain way, or some other unusual use cases.
+   If mrProt does not exist, it will not be returned.
 
    It is recommended to use the function [parseMrProt](https://github.com/jeffreyluci/Siemens-Tools/tree/main/parseMrProt), but it is not
    necessary. 
@@ -45,3 +47,6 @@ Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
 20220120: Added extraction of mrProt into structure using companion
           function parseMrProt, if it exists. If not, mrProt is extracted
           as plain text. 
+
+20230228: Improved reliability of extracting mrProt when marseMrProt is
+          not installed. Various minor speed improvements.

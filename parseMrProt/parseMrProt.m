@@ -15,8 +15,11 @@ function [mrProt, zeroList] = parseMrProt(inputArg)
 % certain situaions and use cases. If mrProt exists in the DICOM file, 
 % parseMrProt should reliably find it. 
 % 
-% Note that if mrProt is not archived in the input argument, parseMrProt 
-% will return an error.
+% Note that mrProt may not be archived in all DICOMs based on the specific
+% software version, whether or not a PACS has touched the data, if is has
+% been de-identified in a certain way, or some other unusual use cases.
+% If mrProt does not exist, it will not be returned. If mrProt is not 
+% archived in the input argument, parseMrProt will return an error.
 % 
 % Note that field indicies may not correspond to those in the native MrProt 
 % as some Siemens arrays are numbered starting at 0, and others at 1. As a
@@ -30,7 +33,7 @@ function [mrProt, zeroList] = parseMrProt(inputArg)
 % https://github.com/jeffreyluci/Siemens-Tools/tree/main/parseMrProt
 % VERSION HISTORY:
 % 20230201 - Initial Release
-% 20230220 - Added sxupport for enhanced DICOMs, including the highly
+% 20230220 - Added support for enhanced DICOMs, including the highly
 %            questionable choice by Siemens to use numbers as structure
 %            field names in some (inconsistent) cases. This made it
 %            necessary to convert hex values to decimal as opposed to
