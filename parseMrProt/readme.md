@@ -4,10 +4,17 @@
  VE, or XA line MRI scanners.
 
  Usage:  mrprot = parseMrProt(input)
-        [mrprot, zeroList] = parseMrProt(input)
+        [mrprot, json] = parseMrProt(input, jsonFileName)
+        [mrprot, json, zeroList] = parseMrProt(input)
  The input argument can be either the file location of the DICOM, or the
  DICOM header as provided by the MATLAB function dicominfo. The resulting 
  structure includes all fields included in MrProt, nested and indexed.
+ 
+ The optional jsonFileName, if provided, will be overwritten with mrProt
+ parsed into JSON syntax. The JSON file contents are also available as an
+ optional return on the command line in the variable json. The JSON file 
+ will maintain the native Siemens array indexing, as opposed to the 
+ renumbered version used in MATLAB matricies (see last paragraph below).
  
  Parsing is most robust when the DICOM file location is given. This is the
  preferred method of using this function since the other two can fail in
@@ -47,3 +54,5 @@ Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
            tag searching in DICOM file. If a DICOM has mrProt, then this 
            method should find it always. Therefore, providing the DICOM
            filename is now the preferred method to parse.
+
+20230301 - Added support for JSON file dumps and command line return.

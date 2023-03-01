@@ -1,14 +1,21 @@
-function [mrProt, zeroList] = parseMrProt(inputArg)
+function [mrProt, jsonContents, zeroList] = parseMrProt(inputArg, jsonFileName)
 % parseMrProt - Parses MrProt from a DICOM acquired on a Siemens VB, VD,
 % VE, or XA line MRI scanners.
 %
 % Usage:  mrprot = parseMrProt(input)
-%        [mrprot, zeroList] = parseMrProt(input)
+%        [mrprot, json] = parseMrProt(input, jsonFileName)
+%        [mrprot, json, zeroList] = parseMrProt(input)
 % The input argument can be the file location of the DICOM, the DICOM 
 % header as provided by the MATLAB function dicominfo, or the plain text of
 % the DICOM tag (which supports input from the function 
 % extractEnahncedDicomTags). The resulting structure includes all fields 
 % included in MrProt, nested and indexed.
+%
+% The optional jsonFileName, if provided, will be overwritten with mrProt
+% parsed into JSON syntax. The JSON file contents are also available as an
+% optional return on the command line in the variable json. The JSON file 
+% will maintain the native Siemens array indexing, as opposed to the 
+% renumbered version used in MATLAB matricies (see last paragraph below).
 %
 % Parsing is most robust when the DICOM file location is given. This is the
 % preferred method of using this function since the other two can fail in
@@ -44,6 +51,7 @@ function [mrProt, zeroList] = parseMrProt(inputArg)
 %            tag searching in DICOM file. If a DICOM has mrProt, then this 
 %            method should find it always. Therefore, providing the DICOM
 %            filename is now the preferred method to parse.
+% 20230301 - Added support for JSON file dumps and command line return.
 
 %check to see if the input is a dicom or a header structure
 if ischar(inputArg)
@@ -63,6 +71,13 @@ else
     end
 end
 
+%check to make sure order of input arguments is correct
+if exist('jsonFileName', 'var')
+    if islogical(jsonFileName)
+        error('Check the order of input arguments and classes.')
+    end
+end
+
 if ~exist('tagFullText', 'var')
     if isfield(hdr, 'Private_0029_1020')
         tagFullText = char(hdr.Private_0029_1020)';
@@ -79,8 +94,9 @@ end
 
 clear('inputArg');
 
-%initialize mrProt
+%initialize mrProt & jsonContents
 mrProt = struct;
+jsonContents = ['{', newline];
 
 %create text list that records which arrays' numbering start at 0 instead of 1
 zeroList = '';
@@ -159,11 +175,26 @@ for ii = 1:numel(mrProtLocationsCR)-2                   % minus 2 accounts for a
     else
         mrProt = setfield(mrProt, assignmentVar{:}, str2double(curLineSplit{2}));
     end
+    
+    %prepare json file contents
+    if contains(curLineSplit{2}, '0x')
+        curLineSplit{2} = ['"\u', curLineSplit{2}, '"'];
+    end
+    jsonContents = [jsonContents, '   "', curLineSplit{1}, '": ', curLineSplit{2}, ',', newline];
 end
+
+jsonContents = [jsonContents, '}', newline];
 
 % make sure zeroList exists, even if empty
 if ~isempty(zeroList)
     zeroList = strtrim(zeroList);
+end
+
+%write json file if requested
+if exist('jsonFileName', 'var')
+    fid = fopen(jsonFileName, 'wt');
+    fwrite(fid, jsonContents, 'char');
+    fclose(fid);
 end
 
     function fileDump = readFullFile(inputArg)
