@@ -52,6 +52,10 @@ function [mrProt, jsonContents, zeroList] = parseMrProt(inputArg, jsonFileName)
 %            method should find it always. Therefore, providing the DICOM
 %            filename is now the preferred method to parse.
 % 20230301 - Added support for JSON file dumps and command line return.
+% 20230714 - Added support for use case where Siemens uses ASCCONV END 
+%            multiple times in the proprietary header. This solution will 
+%            only work if there is only one ASCCONV BEGIN, but as far as I
+%            can tell, that should always be true.
 
 %check to see if the input is a dicom or a header structure
 if ischar(inputArg)
@@ -110,6 +114,7 @@ startOfMrProt = locationsCR(lastSkippedCR) + 1;
 
 %find end of mrprot in the text stream
 endString = strfind(tagFullText, 'ASCCONV END');
+endString = min(endString(endString>startString)); %Sometimes, there is more than one of these.
 lastKeptCR = find(locationsCR < endString, 1, 'last' );
 endOfMrProt = locationsCR(lastKeptCR);
 

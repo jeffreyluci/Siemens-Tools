@@ -56,3 +56,8 @@ Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
            filename is now the preferred method to parse.
 
 20230301 - Added support for JSON file dumps and command line return.
+
+20230714 - Added support for use case where Siemens uses ASCCONV END 
+           multiple times in the proprietary header. This solution will 
+           only work if there is only one ASCCONV BEGIN, but as far as I
+           can tell, that should always be true.
