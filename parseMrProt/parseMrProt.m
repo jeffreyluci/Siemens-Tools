@@ -39,23 +39,25 @@ function [mrProt, jsonContents, zeroList] = parseMrProt(inputArg, jsonFileName)
 % Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
 % https://github.com/jeffreyluci/Siemens-Tools/tree/main/parseMrProt
 % VERSION HISTORY:
-% 20230201 - Initial Release
-% 20230220 - Added support for enhanced DICOMs, including the highly
-%            questionable choice by Siemens to use numbers as structure
-%            field names in some (inconsistent) cases. This made it
-%            necessary to convert hex values to decimal as opposed to
-%            maintaining the ascii encoded hex value which was the 
-%            convention in the previous version.
-% 20230227 - Returned support for maintaining class of hexadecimal values
-%            that was temporarily removed in the last version. Improved 
-%            tag searching in DICOM file. If a DICOM has mrProt, then this 
-%            method should find it always. Therefore, providing the DICOM
-%            filename is now the preferred method to parse.
-% 20230301 - Added support for JSON file dumps and command line return.
-% 20230714 - Added support for use case where Siemens uses ASCCONV END 
-%            multiple times in the proprietary header. This solution will 
-%            only work if there is only one ASCCONV BEGIN, but as far as I
-%            can tell, that should always be true.
+% 20230201: Initial Release
+% 20230220: Added support for enhanced DICOMs, including the highly
+%           questionable choice by Siemens to use numbers as structure
+%           field names in some (inconsistent) cases. This made it
+%           necessary to convert hex values to decimal as opposed to
+%           maintaining the ascii encoded hex value which was the 
+%           convention in the previous version.
+% 20230227: Returned support for maintaining class of hexadecimal values
+%           that was temporarily removed in the last version. Improved 
+%           tag searching in DICOM file. If a DICOM has mrProt, then this 
+%           method should find it always. Therefore, providing the DICOM
+%           filename is now the preferred method to parse.
+% 20230301: Added support for JSON file dumps and command line return.
+% 20230714: Added support for use case where Siemens uses ASCCONV END 
+%           multiple times in the proprietary header. This solution will 
+%           only work if there is only one ASCCONV BEGIN, but as far as I
+%           can tell, that should always be true.
+% 20230814: Fixed bug that did not account for missing CSA header in
+%           Numaris X (e.g. XA11A and XA30A) DICOMs.
 
 %check to see if the input is a dicom or a header structure
 if ischar(inputArg)
@@ -80,6 +82,10 @@ if exist('jsonFileName', 'var')
     if islogical(jsonFileName)
         error('Check the order of input arguments and classes.')
     end
+end
+
+if ~exist('hdr', 'var') && ~exist('tagFullText', 'var')
+    error(['No DICOM tag with MrProt located.', newline, 'Possibly de-identified or DICOM tag renamed?']);
 end
 
 if ~exist('tagFullText', 'var')

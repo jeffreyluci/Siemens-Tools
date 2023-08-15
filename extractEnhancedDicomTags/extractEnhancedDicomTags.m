@@ -16,7 +16,7 @@ function hdr = extractEnhancedDicomTags(fileName, verbose)
 %   will be a parsed structure. If not, the entire contents of the proprietary
 %   tag will be included as plain text, which will include more than mrProt.
 % 
-%   Note that mrProt may not be archived in DICOMs based on the specific
+%   Note that mrProt may not be archived in all DICOMs based on the specific
 %   software version, whether or not a PACS has touched the data, if is has
 %   been de-identified in a certain way, or some other unusual use cases.
 %   If mrProt does not exist, it will not be returned.
@@ -43,6 +43,8 @@ function hdr = extractEnhancedDicomTags(fileName, verbose)
 %           https://github.com/jeffreyluci/Siemens-Tools/tree/main/parseMrProt
 % 20230228: Improved reliability of extracting mrProt when marseMrProt is
 %           not installed. Various minor speed improvements.
+% 20230814: Fixed bug that did not account for missing CSA header in
+%           Numaris X (e.g. XA11A and XA30A) DICOMs.
 %
 %To do:
 
@@ -216,7 +218,11 @@ mrProt = readFullFile(fileName);
 if isfield(dcmHdr.SharedFunctionalGroupsSequence.Item_1, 'Private_0021_10fe')
     assignPar('SharedFunctionalGroupsSequence.Item_1.Private_0021_10fe.Item_1', 'proprietary.tag0021_10fe');
     if exist('parseMrProt', 'file')
-        hdr.mrProt = parseMrProt(mrProt);
+        try
+            hdr.mrProt = parseMrProt(mrProt);
+        catch
+            disp('The proprietary section likely does not exist. Skipping.');
+        end
     else   
         if ~isempty(mrProt)
             hdr.mrProt.textDump = mrProt;
