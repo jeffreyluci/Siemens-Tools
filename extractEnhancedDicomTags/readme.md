@@ -50,3 +50,6 @@ Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
 
 20230228: Improved reliability of extracting mrProt when marseMrProt is
           not installed. Various minor speed improvements.
+
+20230814: Fixed bug that did not account for missing CSA header in
+          Numaris X (e.g. XA11A and XA30A) DICOMs.
