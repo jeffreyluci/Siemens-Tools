@@ -63,9 +63,8 @@ end
 %Set this warning to off to avoid common but meaningless (in this use case)
 % VR Dictionary issues.
 warningDRState = warning('query', 'images:dicominfo:fileVRDoesNotMatchDictionary');
-if strcmp(warningDRState(1).state, 'on')
-    warning('off', 'images:dicominfo:fileVRDoesNotMatchDictionary');
-end
+warning('off', 'images:dicominfo:fileVRDoesNotMatchDictionary');
+
 
 %Check to ensure filePath directory exists
 if ~exist(filePath, 'dir')
