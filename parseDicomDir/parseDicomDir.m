@@ -46,12 +46,25 @@ function parseDicomDir(filePath, options)
 % https://github.com/jeffreyluci/Siemens-Tools/tree/main/parseDicomDir
 % VERSION HISTORY:
 %20230823: Initial Release.
+%20240117: Added management of pesky DICOM VR Dictionay warnings.
+%          Changed error stops to simple text on screen so that use in a a
+%             loop does not halt the entire job.
+%          Fixed bug that did not correctly use the full path to a DICOM
+%          directory structure. Incorporated OS agnostic hadling of file
+%          separators in this fix.
 
 arguments
     filePath char
     options.Verbose (1,1) logical = false
     options.KeepOriginal (1,1) logical = true
     options.DICOMDIRcheck (1,1) logical = true
+end
+
+%Set this warning to off to avoid common but meaningless (in this use case)
+% VR Dictionary issues.
+warningDRState = warning('query', 'images:dicominfo:fileVRDoesNotMatchDictionary');
+if strcmp(warningDRState(1).state, 'on')
+    warning('off', 'images:dicominfo:fileVRDoesNotMatchDictionary');
 end
 
 %Check to ensure filePath directory exists
@@ -73,12 +86,14 @@ fileName = 'DICOMDIR';
 
 %Check to ensure DICOMDIR file exists
 if ~exist(fullfile(filePath, fileName), 'file')
-    error(['Cannot find ', fileName]);
+    fprintf(2, 'Cannot find: %s.', DICOMDIR);
+    return;
 end
 
 %check to make sure DICOMDIR is a readable DICOM file
 if ~isdicom(fullfile(filePath, fileName))
-    error('DICOMDIR is not a DICOM file.');
+    fprintf(2, '%s is not a DICOM file.', DICOMDIR);
+    return;
 end
 
 %check to see if the "converted" directory exists
@@ -96,11 +111,13 @@ startTime = tic;
 for ii = 1:numItems
     curItem = ['Item_', num2str(ii)];
     if options.Verbose
-        fprintf('Processing item number: %d of %d items.\n', ii, numItems);
+        fprintf('Processing item number: %d of %d items.\n\n', ii, numItems);
     end
     %Get location of next DICOM file and read the enhanced DICOM header
     if isfield(dicomDir.DirectoryRecordSequence.(curItem), 'ReferencedFileID')
-        curFile = dicomDir.DirectoryRecordSequence.(curItem).ReferencedFileID;
+        curFile = fullfile(filePath, ...
+                           dicomDir.DirectoryRecordSequence.(curItem).ReferencedFileID);
+        curFile = replace(curFile, '\', filesep); %ensure OS agnostic
         try
             curHdr = extractEnhancedDicomTags(curFile);
         catch
@@ -122,10 +139,10 @@ for ii = 1:numItems
         end
         %Move or copy the files as indicated by the KeepOriginal flag
         if options.KeepOriginal
-            copyfile(fullfile(filePath, curFile), ...
+            copyfile(curFile, ...
                      fullfile(filePath, 'converted', scanDirName, scanFileName));
         else
-            movefile(fullfile(filePath, curFile), ...
+            movefile(curFile, ...
                      fullfile(filePath, 'converted', scanDirName, scanFileName));
         end
     end
@@ -133,6 +150,10 @@ for ii = 1:numItems
 end
 endTime = toc(startTime);
 close(waitbarFig);
+
+%Reset the warning state(s) that might have been changed
+warning(warningDRState(1).state, 'images:dicominfo:fileVRDoesNotMatchDictionary');
+
 %Report how long the process took
 fprintf('This took a total of %0.1f seconds, or %0.1f seconds per file.\n', ...
          endTime, endTime/numItems);
