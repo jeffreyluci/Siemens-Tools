@@ -43,13 +43,13 @@ https://github.com/jeffreyluci/Siemens-Tools/tree/main/extractEnhancedDicomTags
 Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
 
 ## Version History:
-20230823:  Initial Release.
+20230823:    Initial Release.
 
-20240117:  Added management of pesky DICOM VR Dictionay warnings.
+20240117:    Added management of pesky DICOM VR Dictionay warnings.
 
-          Changed error stops to simple text on screen so that use in a a
-          loop does not halt the entire job.
+            Changed error stops to simple text on screen so that use in a a
+            loop does not halt the entire job.
              
-          Fixed bug that did not correctly use the full path to a DICOM
-          directory structure. Incorporated OS agnostic handling of file
-          separators in this fix.
+            Fixed bug that did not correctly use the full path to a DICOM
+            directory structure. Incorporated OS agnostic handling of file
+            separators in this fix.
