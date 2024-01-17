@@ -48,5 +48,5 @@ Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
           Changed error stops to simple text on screen so that use in a a
              loop does not halt the entire job.
           Fixed bug that did not correctly use the full path to a DICOM
-          directory structure. Incorporated OS agnostic handling of file
-          separators in this fix.
+             directory structure. Incorporated OS agnostic handling of file
+             separators in this fix.
