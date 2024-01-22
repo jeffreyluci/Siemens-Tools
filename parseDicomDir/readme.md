@@ -12,8 +12,8 @@ Usage: parseDicomDir(pathToDicomDirectory)
 
 This function will use the DICOM index file (named "DICOMDIR") in the root
 of a DICOM archive directory structure to reoragnize the image-containing
-DICOMs into a human-readable directory structure. The naming convention of
-used for the new structure is the same as the one used on Siemens D and
+DICOMs into a human-readable directory structure. The naming convention
+used for the new structure is the same as the one used on Siemens D- and
 E-line MRI scanners when exporting DICOMs to a filesystem. This presumes
 that the DICOMs are Siemens enhanced DICOMs generated on XA-line scanners
 and later. Non-enhanced DICOMs are not supported. The function
