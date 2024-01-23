@@ -52,6 +52,8 @@ function parseDicomDir(filePath, options)
 %          Fixed bug that did not correctly use the full path to a DICOM
 %          directory structure. Incorporated OS agnostic handling of file
 %          separators in this fix.
+%20240123: Fixed a bug that would halt the process upon encountering a
+%          non-image DICOM.
 
 arguments
     filePath char
@@ -120,7 +122,7 @@ for ii = 1:numItems
         try
             curHdr = extractEnhancedDicomTags(curFile);
         catch
-            break;
+            continue;
         end
         %Replace blank spaces in the protocol name with underscores
         protocolName = regexprep(curHdr.session.protocolName, ' ', '_');
