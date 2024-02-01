@@ -48,13 +48,11 @@ Options: Verbose = true/(false) - verbose output to the command line
 
  Two dependencies exist for this function. The package dcm2niix is
  maintained and distributed at [Chris Rorden's GitHub.](https://github.com/rordenlab/dcm2niix)
- The M-file parseMrProt.m is maintained and distributed at [Jeff Luci's GitHub.]
- (https://github.com/jeffreyluci/Siemens-Tools/tree/main/parseMrProt)
+ The M-file parseMrProt.m is maintained and distributed at [Jeff Luci's GitHub.](https://github.com/jeffreyluci/Siemens-Tools/tree/main/parseMrProt)
  All software called by or otherwise used by this M-file is subject to the
  license and citation requirements described on their GitHub pages.
 
-The NORDIC reconstruction functor (piepline) is available at [The Siemens Teamplay C2P Exchange]
-(https://webclient.us.api.teamplay.siemens-healthineers.com/home)
+The NORDIC reconstruction functor (piepline) is available at [The Siemens Teamplay C2P Exchange](https://webclient.us.api.teamplay.siemens-healthineers.com/home)
 
 VERSION HISTORY:
 20240201:  Initial Release.
