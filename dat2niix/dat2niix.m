@@ -24,6 +24,8 @@ function dat2niix(dicomDirectory, datDirectory, niftiDirectory, options)
 %                         microsecond precision when set to true, otherwise
 %                         the TE is recorded with more common tenth of a
 %                         millisecond precision
+%         reportTime = true/(false) - report the total time spent
+%                                     processing the job
 % 
 % This function works in conjunction with both the CMRR multiband BOLD EPI 
 % sequence and the WashU NORDIC recon functor to produce multi-echo, 
@@ -62,14 +64,16 @@ function dat2niix(dicomDirectory, datDirectory, niftiDirectory, options)
 % https://github.com/jeffreyluci/Siemens-Tools/tree/main/dat2niix
 % VERSION HISTORY:
 % 20240201: Initial Release.
+% 20240202: Added timed option and numerous comment improvements.
 
 
 arguments
     dicomDirectory char
     datDirectory   char
     niftiDirectory char
-    options.Verbose (1,1) logical = false
+    options.Verbose       (1,1) logical = false
     options.highPrecision (1,1) logical = false
+    options.reportTime    (1,1) logical = false
 end
 
 if options.Verbose
@@ -124,12 +128,12 @@ end
 d=dir(dicomDirectory);
 
 %Assume all files in dicomDirectory are DICOMs, and initialize 
-%the workList struct explicitly to ensure maximu efficency
-workList(numel(dicomDirectory)-1).dicomName = [];
-workList(numel(dicomDirectory)-1).imgType = [];
-workList(numel(dicomDirectory)-1).repNum = [];
-workList(numel(dicomDirectory)-1).datFile = [];
-workList(numel(dicomDirectory)-1).seriesUID = [];
+%the workList struct explicitly to ensure maximum efficency
+workList(numel(dicomDirectory)-1).dicomName    = [];
+workList(numel(dicomDirectory)-1).imgType      = [];
+workList(numel(dicomDirectory)-1).repNum       = [];
+workList(numel(dicomDirectory)-1).datFile      = [];
+workList(numel(dicomDirectory)-1).seriesUID    = [];
 workList(numel(dicomDirectory)-1).datFileMatch = [];
 
 
@@ -142,7 +146,7 @@ for ii = 3:numel(d)
             disp(['Parsing: ' workList(curDicom).dicomName]);
         end
         hdr = dicominfo(workList(curDicom).dicomName);
-        if contains(hdr.SeriesDescription, 'BOLD_NORDIC')
+        if contains(hdr.SeriesDescription, 'BOLD_NORDIC') %only select NORDIC DICOMs
             if strcmp(hdr.ComplexImageComponent, 'MAGNITUDE')
                 workList(curDicom).imgType = 'mag';
             elseif strcmp(hdr.ComplexImageComponent, 'PHASE')
@@ -175,7 +179,9 @@ end
 
 
 %Clean up workList by making sure the number of elements 
-%is consistent with the number of DICOMs found
+%is consistent with the number of DICOMs found. This is necessary since we
+%assume above that all files in dicomDirectory are DICOMs. It that's not
+%true, then the size of workList will be too long.
 if numel(workList) > curDicom-1
     if options.Verbose
         disp(['Trimming of worklist is necessary.', newline, ...
@@ -185,8 +191,8 @@ if numel(workList) > curDicom-1
     workList(curDicom:end) = [];
 end
 
-numEchos = mrProt.lContrasts;
-TE = mrProt.alTE(1:numEchos);
+numEchos  = mrProt.lContrasts;
+TE        = mrProt.alTE(1:numEchos);
 patientID = hdr.PatientID;
 
 
@@ -271,7 +277,7 @@ TELocation = find(contains(niftiDescription, 'TE'));
 niftiTE = split(niftiDescription{TELocation}, '=');
 
 %Construct headers with correct echo times for all echos
-%precision of TE reported to a tenth of a millisecond by default,
+%Precision of TE reported to a tenth of a millisecond by default,
 %and to a microseond if requested in the options
 for ii = 2:numEchos
     niftiHdr(ii) = niftiHdr(1);
@@ -379,9 +385,9 @@ end
 delete(jsonFilename);
 
 %Report time spent
-timeSpent = toc;
-if options.Verbose
-    disp(['Total time spent in process: ', timeSpent, 'sec.']);
+timeSpent = num2str(toc);
+if options.Verbose || options.reportTime
+    disp(['Total time spent in process: ', timeSpent, ' sec.']);
 end
 
 
