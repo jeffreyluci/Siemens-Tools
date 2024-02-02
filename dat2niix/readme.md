@@ -3,7 +3,7 @@
 **dat2niix** - A function that generates multi-echo NIfTI files from raw image
            data saved by WashU's NORDIC functor from the CMRR BOLD EPI.
 
-**Usage:**
+# Usage:
 `dat2niix(dicomDirectory, datDirectory, niftiDirectory)`, or optionally,
   `dat2niix(dicomDirectory, datDirectory, niftiDirectory, options)`
 
@@ -30,7 +30,7 @@
                          the TE is recorded with more common tenth of a
                          millisecond precision
 
- **Discussion:**
+ # Discussion:
  
  This function works in conjunction with both the CMRR multiband BOLD EPI 
  sequence and the WashU NORDIC recon functor to produce multi-echo, 
@@ -58,7 +58,10 @@
  All software called by or otherwise used by this M-file is subject to the
  license and citation requirements described on their GitHub pages.
 
- The NORDIC reconstruction functor (pipeline) is available at [The Siemens Teamplay C2P Exchange.](https://webclient.us.api.teamplay.siemens-healthineers.com/home)
+ The NORDIC reconstruction functor (pipeline) is available at [The Siemens Teamplay C2P Exchange.](https://webclient.us.api.teamplay.siemens-healthineers.com/c2p)
 
-VERSION HISTORY:
+ # Acknowledgements
+ Cihat Eldeniz provided invaluable tips and advice on proper implementation of NORDIC, troubleshooting issues, and editing this text.
+
+# VERSION HISTORY:
 20240201:  Initial Release.
