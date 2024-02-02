@@ -58,7 +58,7 @@
  All software called by or otherwise used by this M-file is subject to the
  license and citation requirements described on their GitHub pages.
 
- The NORDIC reconstruction functor (pipeline) is available at [The Siemens Teamplay C2P Exchange.](https://webclient.us.api.teamplay.siemens-healthineers.com/c2p)
+ The NORDIC reconstruction functor (pipeline) is available at [The Siemens Teamplay C<sup>2</sup>P Exchange.](https://webclient.us.api.teamplay.siemens-healthineers.com/c2p)
 
  # Acknowledgements
  Cihat Eldeniz provided invaluable tips and advice on proper implementation of NORDIC, troubleshooting issues, and editing this text.
