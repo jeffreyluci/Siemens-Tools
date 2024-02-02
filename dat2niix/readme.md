@@ -1,6 +1,6 @@
 # dat2niix
 
-**dat2niix** - A function that generates multi-echo NIfTI files from raw image
+**dat2niix** - A MATLAB function that generates multi-echo NIfTI files from raw image
            data saved by WashU's NORDIC functor from the CMRR BOLD EPI.
 
 # Usage:
