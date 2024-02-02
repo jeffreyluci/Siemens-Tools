@@ -30,6 +30,8 @@
                          the TE is recorded with more common tenth of a
                          millisecond precision
 
+`reportTime = true/(false)` - report the total time spent processing the job
+
  # Discussion:
  
  This function works in conjunction with both the CMRR multiband BOLD EPI 
@@ -65,3 +67,4 @@
 
 # Version History
 20240201:  Initial Release.
+20240202:  Added timed option and numerous comment improvements.
