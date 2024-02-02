@@ -63,5 +63,5 @@
  # Acknowledgements
  Cihat Eldeniz provided invaluable tips and advice on proper implementation of NORDIC, troubleshooting issues, and editing this text.
 
-# VERSION HISTORY:
+# Version History
 20240201:  Initial Release.
