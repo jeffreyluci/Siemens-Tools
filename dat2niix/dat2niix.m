@@ -65,6 +65,8 @@ function dat2niix(dicomDirectory, datDirectory, niftiDirectory, options)
 % VERSION HISTORY:
 % 20240201: Initial Release.
 % 20240202: Added timed option and numerous comment improvements.
+% 20240206: Added provenance notation in json sidecar to ConversionSoftware
+%           and ConversionSoftwareVersion objects. Fixed time report bug.
 
 
 arguments
@@ -76,8 +78,10 @@ arguments
     options.reportTime    (1,1) logical = false
 end
 
-if options.Verbose
-    tic;
+VERSION = 'v20240206';
+
+if options.Verbose || options.reportTime
+    startTime = tic;
 end
 
 if options.highPrecision
@@ -358,10 +362,24 @@ jsonContents = fread(fid, inf, 'uint8=>char')';
 fclose(fid);
 jsonStruct = jsondecode(jsonContents);
 
+%update ConversionSoftware object to note this modification
+convSoft = split(jsonStruct.ConversionSoftware);
+convSoftVer = split(jsonStruct.ConversionSoftwareVersion);
+convSoft{end+1} = 'dat2niix';
+convSoftVer{end+1} = VERSION;
+jsonStruct.ConversionSoftware = join(convSoft, ';');
+jsonStruct.ConversionSoftwareVersion = join(convSoftVer, ';');
+
 for ii = 1:numEchos
     jsonStruct(ii) = jsonStruct(1);
+
+    %fix echo time
     jsonStruct(ii).EchoTime = str2double(sprintf('%0.4f', TE(ii)/10e6));
     jsonStruct(ii).SliceTiming = jsonStruct(1).SliceTiming + TE(ii)/10e6;
+
+    
+
+
 
     curJsonTxt = jsonencode(jsonStruct(ii), PrettyPrint=true);
     if strcmp(workList(1).imgType, 'mag')
@@ -385,7 +403,7 @@ end
 delete(jsonFilename);
 
 %Report time spent
-timeSpent = num2str(toc);
+timeSpent = num2str(toc(startTime));
 if options.Verbose || options.reportTime
     disp(['Total time spent in process: ', timeSpent, ' sec.']);
 end

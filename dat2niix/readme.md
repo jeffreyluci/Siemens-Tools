@@ -69,3 +69,6 @@
 20240201:  Initial Release.
 
 20240202:  Added timed option and numerous comment improvements.
+
+20240206:  Added provenance notation in json sidecar to ConversionSoftware 
+           and ConversionSoftwareVersion objects. Fixed time report bug.
