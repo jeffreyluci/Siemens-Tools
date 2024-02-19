@@ -32,6 +32,14 @@
 
 `reportTime = true/(false)` - report the total time spent processing the job
 
+`logFile = <log file location>` - A text file will be created at the 
+                                  location of the log file specified at the 
+                                  verbosity level specified. Note that this 
+                                  file will be sparsely populated or even  
+                                  empty for successful jobs with the Verbose
+                                  option turned off. The default is no
+                                  logging.
+
  # Discussion:
  
  This function works in conjunction with both the CMRR multiband BOLD EPI 
@@ -64,6 +72,8 @@
 
  # Acknowledgements
  Cihat Eldeniz provided invaluable tips and advice on proper implementation of NORDIC, troubleshooting issues, and editing this text.
+ 
+ Chris Markiewicz, Chris Rorden, and Russ Poldrak provided valuable feedback regarding best practices for maintaining good data provenance records in the json sidecars. 
 
 # Version History
 20240201:  Initial Release.
@@ -72,3 +82,7 @@
 
 20240206:  Added provenance notation in json sidecar to ConversionSoftware 
            and ConversionSoftwareVersion objects. Fixed time report bug.
+
+20240219: Added logging feature. Changed NIfTI naming convention to make
+          it more BIDS-firendly. Added more verbose-level descriptive
+		  text.
