@@ -35,8 +35,8 @@
 `logFile = <log file location>` - A text file will be created at the 
                                   location of the log file specified at the 
                                   verbosity level specified. Note that this 
-                                  file will be sparsely populated or even  
-                                  empty for successful jobs with the Verbose
+                                  file will be sparsely populated or even 
+				  empty for successful jobs with the Verbose
                                   option turned off. The default is no
                                   logging.
 
