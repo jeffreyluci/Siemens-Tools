@@ -77,6 +77,10 @@ function dat2niix(dicomDirectory, datDirectory, niftiDirectory, options)
 % 20240219: Added logging feature. Changed NIfTI naming convention to make
 %           it more BIDS-friendly. Added more verbose-level descriptive
 %           text.
+% 20240220: Added log filename automatic incrementing feature. Fixed bug
+%           that prevented execution time from being written to log.
+%           Corrected the logged filenames for the NIfTIs written to
+%           include the full path name.
 
 
 arguments
@@ -89,19 +93,16 @@ arguments
     options.logFile       char = 'none'
 end
 
-VERSION = 'v20240219';
+VERSION = 'v20240220';
 
 %enable execution time reporting if specifically requested
 if options.Verbose || options.reportTime
     startTime = tic;
 end
 
-%log output at verbosity level if requested
+%log output if requested
 if ~strcmp(options.logFile, 'none')
-    [logDir, ~, ~] = fileparts(options.logFile);
-    if isempty(logDir)
-        options.logFile = ['./', options.logFile];
-    end
+    options.logFile = incrementFilename(options.logFile);
     diary(options.logFile);
 end        
 
@@ -364,7 +365,7 @@ for ii = 1:numEchos
     end
     curName = [niftiNameBase, nameAppendix];
     if options.Verbose
-        disp(['Writing: ', curName]);
+        disp(['Writing: ', fullfile(niftiDirectory, strcat(curName, '.nii.gz'))]);
     end
     niftiwrite(squeeze(rawIM(:,:,:,ii,:)), fullfile(niftiDirectory, curName), ...
                                            niftiHdr(ii), 'Compressed', true);
@@ -430,15 +431,15 @@ if options.Verbose
 end
 delete(jsonFilename);
 
-%discontinue loging if enabled
-if ~strcmp(options.logFile, 'none')
-    diary('off');
-end
-
 %Report time spent
 timeSpent = num2str(toc(startTime));
 if options.Verbose || options.reportTime
     disp(['Total time spent in process: ', timeSpent, ' sec.']);
+end
+
+%discontinue loging if enabled
+if ~strcmp(options.logFile, 'none')
+    diary('off');
 end
 
 
@@ -482,4 +483,42 @@ function dateOfVersion = checkDcm2niixVersion(options)
         while strcmp(newUID(end-1:end), '.0')
             newUID = newUID(1:end-2);
         end
+    end
+
+
+
+    function newFilename = incrementFilename(oldFilename)
+
+    %if the file does not exist, no increment is necessary,
+    %so just return old filename.
+    if ~exist(oldFilename, 'file')
+        newFilename = oldFilename;
+        return;
+    end
+
+    [filePath, fileName, fileExt] = fileparts(oldFilename);
+    splitName = split(fileName, '-');
+    fileNum = str2double(splitName{end});
+
+    %if the split name contained a dash, and the last dash is only followed
+    %by a number and the file extention, then increment the number
+    if numel(splitName) > 2 && ~isnan(fileNum)
+        fileNum = fileNum + 1;
+        splitName{end} = num2str(fileNum);
+        newFilename = fullfile(filePath, strcat(join(splitName, '-'), fileExt));
+
+        %check to see if the new filename exists, and if it does, continue to
+        %increment the number until a unique filename results
+        while exist(newFilename, 'file')
+            fileNum = fileNum + 1;
+            splitName{end} = num2str(fileNum);
+            newFilename = fullfile(filePath, strcat(join(splitName, '-'), fileExt));
+        end
+    else
+
+        %if the filename does not end in a dash then number, then simply append
+        %it with '-1'
+        newFilename = fullfile(filePath, strcat([fileName, '-1'], fileExt));
+    end
+
     end
