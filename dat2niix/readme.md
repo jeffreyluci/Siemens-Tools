@@ -36,11 +36,7 @@
                                   location of the log file specified at the 
                                   verbosity level specified. Note that this 
                                   file will be sparsely populated or even 
-<<<<<<< Updated upstream
-				                  empty for successful jobs with the Verbose
-=======
-				  empty for successful jobs with the Verbose
->>>>>>> Stashed changes
+                                  empty for successful jobs with the Verbose
                                   option turned off. The default is no
                                   logging.
 
@@ -90,12 +86,8 @@
 20240219: Added logging feature. Changed NIfTI naming convention to make
           it more BIDS-firendly. Added more verbose-level descriptive
 		  text.
-<<<<<<< Updated upstream
-=======
-		  
-20240220: Added log filename automatic incrementing feature. Fixed bug
-         that prevented execution time from being written to log.
-         Corrected the logged filenames for the NIfTIs written to
-         include the full path name.
 
->>>>>>> Stashed changes
+20240220: Added log filename automatic incrementing feature. Fixed bug
+          that prevented execution time from being written to log.
+          Corrected the logged filenames for the NIfTIs written to
+          include the full path name.
