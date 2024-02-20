@@ -1,7 +1,7 @@
 # dat2niix
 
-**dat2niix** - A MATLAB function that generates multi-echo NIfTI files from raw image
-           data saved by WashU's NORDIC functor from the CMRR BOLD EPI.
+**dat2niix** - A MATLAB function that generates multi-echo NIfTI files from raw image (pixel)
+           data saved by WashU's NORDIC functor from the CMRR BOLD EPI pulse sequence.
 
 # Usage:
 `dat2niix(dicomDirectory, datDirectory, niftiDirectory)`, or optionally,
@@ -27,7 +27,7 @@
 
 `highPrecision = true/(false)` - TE recorded in headers with 
                          microsecond precision when set to true, otherwise
-                         the TE is recorded with more common tenth of a
+                         the TE is recorded with (more common) tenth of a
                          millisecond precision
 
 `reportTime = true/(false)` - report the total time spent processing the job
@@ -58,7 +58,7 @@
  from dcm2niix to assemble NIfTIs of all echos, one file per echo. 
 
  The multi-echo NIfTI headers contain the correct TE for their respecitve
- data and the slice timing parameters for all bu the first echo have their
+ data and the slice timing parameters for all but the first echo have their
  respective TEs added to them. It is possible to force maximum precision
  recording of the TEs with the highPrecision logical argument.
 
