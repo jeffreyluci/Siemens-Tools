@@ -290,9 +290,9 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
 
 if options.Verbose
-    cmdString = ['/media/myelin/brainmappers/HardDrives/1TB/dcm2niix_lnx/dcm2niix -v y -z y -f %j -o ', niftiDirectory, ' ', dicomDirectory];
+    cmdString = ['dcm2niix -v y -z y -f %j -o ', niftiDirectory, ' ', dicomDirectory];
 else
-    cmdString = ['/media/myelin/brainmappers/HardDrives/1TB/dcm2niix_lnx/dcm2niix -z y -f %j -o ', niftiDirectory, ' ', dicomDirectory];
+    cmdString = ['dcm2niix -z y -f %j -o ', niftiDirectory, ' ', dicomDirectory];
 end
 [~, STDOUT] = system(cmdString);
 if options.Verbose
@@ -472,7 +472,7 @@ end
 
 
 function dateOfVersion = checkDcm2niixVersion(options)
-        [STDERR,STDOUT] = system('/media/myelin/brainmappers/HardDrives/1TB/dcm2niix_lnx/dcm2niix -h');
+        [STDERR,STDOUT] = system('dcm2niix -h');
         if STDERR ~= 0 
             error('Could not verify dcm2niix installation.');
         end
