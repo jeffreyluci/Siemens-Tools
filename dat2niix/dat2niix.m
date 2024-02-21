@@ -176,12 +176,20 @@ for ii = 3:numel(d)
         hdr = dicominfo(workList(curDicom).dicomName);
         if contains(hdr.SeriesDescription, 'BOLD_NORDIC') %only select NORDIC DICOMs
             if strcmp(hdr.ComplexImageComponent, 'MAGNITUDE')
-                workList(curDicom).imgType = 'mag';
+                if contains(hdr.SeriesDescription, 'SBRef')
+                    workList(curDicom).imgType = 'mag_sbref';
+                else
+                    workList(curDicom).imgType = 'mag';
+                end
             elseif strcmp(hdr.ComplexImageComponent, 'PHASE')
-                workList(curDicom).imgType = 'phs';
+                if contains(hdr.SeriesDescription, 'SBRef')
+                    workList(curDicom).imgType = 'phs_sbref';
+                else
+                    workList(curDicom).imgType = 'phs';
+                end
             else
                 error('Unknown data type in %s.', workList(curDicom).dicomName);
-            end
+            end               
             workList(curDicom).repNum = hdr.InstanceNumber;
             workList(curDicom).datFile = 'pending';
             workList(curDicom).seriesUID = trimUID(hdr.SeriesInstanceUID);
@@ -245,6 +253,20 @@ for ii = 1:numel(workList)
         if options.Verbose
             disp('DICOMs identified as PHASE images.')
         end
+    elseif strcmp(workList(ii).imgType, 'mag_sbref')
+        workList(ii).datFile = sprintf('%s%s_SBRef_Mag_%04d.dat', baseName, ...
+                                               workList(ii).seriesUID, ...
+                                               workList(ii).repNum);
+        if options.Verbose
+            disp('DICOMs identified as SBRef MAGNITUDE images.')
+        end
+    elseif strcmp(workList(ii).imgType, 'phs_sbref')
+        workList(ii).datFile = sprintf('%s%s_SBRef_Phs_%04d.dat', baseName, ...
+                                               workList(ii).seriesUID, ...
+                                               workList(ii).repNum);
+        if options.Verbose
+            disp('DICOMs identified as SBRef PHASE images.')
+        end
     else
         error('Unknown Image data type.');
     end
@@ -268,17 +290,17 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
 
 if options.Verbose
-    cmdString = ['dcm2niix -v y -z y -f %j -o ', niftiDirectory, ' ', dicomDirectory];
+    cmdString = ['/media/myelin/brainmappers/HardDrives/1TB/dcm2niix_lnx/dcm2niix -v y -z y -f %j -o ', niftiDirectory, ' ', dicomDirectory];
 else
-    cmdString = ['dcm2niix -z y -f %j -o ', niftiDirectory, ' ', dicomDirectory];
+    cmdString = ['/media/myelin/brainmappers/HardDrives/1TB/dcm2niix_lnx/dcm2niix -z y -f %j -o ', niftiDirectory, ' ', dicomDirectory];
 end
 [~, STDOUT] = system(cmdString);
 if options.Verbose
     disp(STDOUT)
 end
-if strcmp(workList(1).imgType, 'mag')
+if strcmp(workList(1).imgType, 'mag') || strcmp(workList(1).imgType, 'mag_sbref')
     niftiBaseName = hdr.SeriesInstanceUID;
-else
+elseif strcmp(workList(1).imgType, 'phs') || strcmp(workList(1).imgType, 'phs_sbref')
     niftiBaseName = [hdr.SeriesInstanceUID, '_ph'];
 end
 niftiTargetName = [niftiBaseName, '.nii.gz'];
@@ -297,7 +319,11 @@ niftiHdr = niftiinfo(fullfile(niftiDirectory, niftiTargetName));
 numPointsRead  = niftiHdr.ImageSize(1);
 numPointsPhase = niftiHdr.ImageSize(2);
 numSlices      = niftiHdr.ImageSize(3);
+if length(niftiHdr.ImageSize)>3
 numReps        = niftiHdr.ImageSize(4);
+else
+numReps=1;
+end
 
 %Prepare to edit the TE listed in the parent and raw descriptions
 niftiDescription = split(niftiHdr.Description, ';');
@@ -337,7 +363,8 @@ for ii = 1:numel(workList)
     rawStream = fread(fid, inf, 'uint16');
     fclose(fid);
     rawStream = reshape(rawStream,[numPointsRead, numPointsPhase, numSlices, numEchos]);
-    rawStream = permute(rawStream,[2 1 3 4]);
+    rawStream = flip(rawStream,2);
+    %rawStream = permute(rawStream,[2 1 3 4]);
     %Assume interleaved slice ordering, but in the future other ordering
     %options might be enabled, in which case the slice order should be
     %determined from the DICOM header
@@ -356,9 +383,9 @@ niftiNameBase = sprintf('%s_%s_%03d_', hdr.PatientID, ...
                                        replace(hdr.SeriesDescription, '_Pha', ''), ...
                                        hdr.SeriesNumber);
 for ii = 1:numEchos
-    if strcmp(workList(1).imgType, 'mag')
+    if strcmp(workList(1).imgType, 'mag') || strcmp(workList(1).imgType, 'mag_sbref')
         nameAppendix = sprintf('_mag_echo-%02d', ii);
-    else
+    elseif strcmp(workList(1).imgType, 'phs') || strcmp(workList(1).imgType, 'phs_sbref')
         nameAppendix = sprintf('_phs_echo-%02d', ii);
     end
     if strcmp(niftiNameBase(end), '_')
@@ -408,10 +435,10 @@ for ii = 1:numEchos
     jsonStruct(ii).SliceTiming = jsonStruct(1).SliceTiming + TE(ii)/10e6;
 
     curJsonTxt = jsonencode(jsonStruct(ii), PrettyPrint=true);
-    if strcmp(workList(1).imgType, 'mag')
-        nameAppendix = sprintf('_mag_e%d.json', ii);
-    else
-        nameAppendix = sprintf('_phs_e%d.json', ii);
+    if strcmp(workList(1).imgType, 'mag') || strcmp(workList(1).imgType, 'mag_sbref')
+        nameAppendix = sprintf('_mag_echo-%02d', ii);
+    elseif strcmp(workList(1).imgType, 'phs') || strcmp(workList(1).imgType, 'phs_sbref')
+        nameAppendix = sprintf('_phs_echo-%02d', ii);
     end
     curName = fullfile(niftiDirectory, [niftiNameBase, nameAppendix]);
     if options.Verbose
@@ -429,8 +456,8 @@ end
 delete(jsonFilename);
 
 %Report time spent
-timeSpent = num2str(toc(startTime));
 if options.Verbose || options.reportTime
+    timeSpent = num2str(toc(startTime));
     disp(['Total time spent in process: ', timeSpent, ' sec.']);
 end
 
@@ -445,7 +472,7 @@ end
 
 
 function dateOfVersion = checkDcm2niixVersion(options)
-        [STDERR,STDOUT] = system('dcm2niix -h');
+        [STDERR,STDOUT] = system('/media/myelin/brainmappers/HardDrives/1TB/dcm2niix_lnx/dcm2niix -h');
         if STDERR ~= 0 
             error('Could not verify dcm2niix installation.');
         end
