@@ -82,6 +82,12 @@ function dat2niix(dicomDirectory, datDirectory, niftiDirectory, options)
 %           that prevented execution time from being written to log.
 %           Corrected the logged filenames for the NIfTIs written to
 %           include the full path name.
+% 20240221: Added support for SBRef image type (contributed). Fixed image
+%           orientation bug (contributed). Fixed timed option bug that
+%           minifested without verbose output (contributed). Made json
+%           filename consistent (contributed). Fixed json file extention.
+%           Added start and end timestamps with version logging. Improved
+%           log file incrementing function flow.
 
 
 arguments
@@ -94,7 +100,7 @@ arguments
     options.logFile       char = 'none'
 end
 
-VERSION = 'v20240220';
+VERSION = 'v20240221';
 
 %enable execution time reporting if specifically requested
 if options.Verbose || options.reportTime
@@ -105,6 +111,8 @@ end
 if ~strcmp(options.logFile, 'none')
     options.logFile = incrementFilename(options.logFile);
     diary(options.logFile);
+    timestamp = char(datetime('now', 'TimeZone', 'local', 'Format', 'd-MMM-y HH:mm:ss Z'));
+    disp(['dat2niix version ', VERSION, ' execution started: ', timestamp, newline]);
 end        
 
 %enable high precision parameters if requested
@@ -115,7 +123,14 @@ else
 end
 
 %Check to ensure prerequisites are installed
+if options.Verbose
+    disp('Checking version of dcm2niix installed.');
+    disp(['Output that immediately follows is help from dcm2niix.', newline]);
+end
 checkDcm2niixVersion(options);
+if options.Verbose
+    disp(['End help output from dcm2niix.', newline]);
+end
 mrProtExists = exist('parseMrProt.m', 'file');
 if mrProtExists ~= 2
     error('parseMrProt.m is not found in the path. See help for instructions.');
@@ -440,7 +455,7 @@ for ii = 1:numEchos
     elseif strcmp(workList(1).imgType, 'phs') || strcmp(workList(1).imgType, 'phs_sbref')
         nameAppendix = sprintf('_phs_echo-%02d', ii);
     end
-    curName = fullfile(niftiDirectory, [niftiNameBase, nameAppendix]);
+    curName = fullfile(niftiDirectory, [niftiNameBase, nameAppendix, '.json']);
     if options.Verbose
         disp(['Writing new json file: ', curName]);
     end
@@ -458,7 +473,9 @@ delete(jsonFilename);
 %Report time spent
 if options.Verbose || options.reportTime
     timeSpent = num2str(toc(startTime));
-    disp(['Total time spent in process: ', timeSpent, ' sec.']);
+    timestamp = char(datetime('now', 'TimeZone', 'local', 'Format', 'd-MMM-y HH:mm:ss Z'));
+    disp(['dat2niix execution finished: ', timestamp, newline]);
+    disp(['Total time spent in execution: ', timeSpent, ' sec.']);
 end
 
 %discontinue loging if enabled
@@ -530,19 +547,18 @@ function dateOfVersion = checkDcm2niixVersion(options)
         fileNum = fileNum + 1;
         splitName{end} = num2str(fileNum);
         newFilename = fullfile(filePath, strcat(join(splitName, '-'), fileExt));
+    elseif numel(splitName) == 1 && isnan(fileNum)
+        fileNum = 1;
+        splitName{end+1} = num2str(fileNum);
+        newFilename = fullfile(filePath, strcat(join(splitName, '-'), fileExt));
+    end   
 
-        %check to see if the new filename exists, and if it does, continue to
-        %increment the number until a unique filename results
-        while exist(newFilename, 'file')
-            fileNum = fileNum + 1;
-            splitName{end} = num2str(fileNum);
-            newFilename = fullfile(filePath, strcat(join(splitName, '-'), fileExt));
-        end
-    else
-
-        %if the filename does not end in a dash then number, then simply append
-        %it with '-1'
-        newFilename = fullfile(filePath, strcat([fileName, '-1'], fileExt));
+    %check to see if the new filename exists, and if it does, continue to
+    %increment the number until a unique filename results
+    while exist(char(newFilename), 'file')
+        fileNum = fileNum + 1;
+        splitName{end} = num2str(fileNum);
+        newFilename = fullfile(filePath, strcat(join(splitName, '-'), fileExt));
     end
-
+    newFilename = char(newFilename);
     end

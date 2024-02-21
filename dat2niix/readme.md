@@ -75,6 +75,8 @@
  
  Chris Markiewicz, Chris Rorden, and Russ Poldrak provided valuable feedback regarding best practices for maintaining good data provenance records in the json sidecars. 
 
+ @github.com/glasserm contributed support for SBRef images and identified an image orientation bug fixed in v20240221.
+
 # Version History
 20240201:  Initial Release.
 
@@ -91,3 +93,10 @@
           that prevented execution time from being written to log.
           Corrected the logged filenames for the NIfTIs written to
           include the full path name.
+		  
+20240221: Added support for SBRef image type (contributed). Fixed image
+          orientation bug (contributed). Fixed timed option bug that
+          minifested without verbose output (contributed). Made json
+          filename consistent (contributed). Fixed json file extention.
+          Added start and end timestamps with version logging. Improved
+          log file incrementing function flow.
