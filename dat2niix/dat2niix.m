@@ -66,7 +66,7 @@ function dat2niix(dicomDirectory, datDirectory, niftiDirectory, options)
 % <a href="matlab:web('https://webclient.us.api.teamplay.siemens-healthineers.com/c2p')">The Siemens Teamplay C2P Exchange.</a>
 %
 % This function is maintained <a href="matlab:web('https://github.com/jeffreyluci/Siemens-Tools/tree/main/dat2niix')">at this URL.</a>:
-% Version: 20240201
+% Version: 20240503
 
 % Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
 % https://github.com/jeffreyluci/Siemens-Tools/tree/main/dat2niix
@@ -88,6 +88,8 @@ function dat2niix(dicomDirectory, datDirectory, niftiDirectory, options)
 %           filename consistent (contributed). Fixed json file extention.
 %           Added start and end timestamps with version logging. Improved
 %           log file incrementing function flow.
+% 20240403: Added EchoNumber to json files to improve workability with 
+%           fmriprep and for consistency.
 
 
 arguments
@@ -100,7 +102,7 @@ arguments
     options.logFile       char = 'none'
 end
 
-VERSION = 'v20240221';
+VERSION = 'v20240503';
 
 %enable execution time reporting if specifically requested
 if options.Verbose || options.reportTime
@@ -448,6 +450,7 @@ for ii = 1:numEchos
     %fix echo time
     jsonStruct(ii).EchoTime = str2double(sprintf('%0.4f', TE(ii)/10e6));
     jsonStruct(ii).SliceTiming = jsonStruct(1).SliceTiming + TE(ii)/10e6;
+    jsonStruct(ii).EchoNumber = ii;
 
     curJsonTxt = jsonencode(jsonStruct(ii), PrettyPrint=true);
     if strcmp(workList(1).imgType, 'mag') || strcmp(workList(1).imgType, 'mag_sbref')
