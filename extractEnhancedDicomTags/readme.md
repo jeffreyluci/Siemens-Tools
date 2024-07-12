@@ -53,3 +53,5 @@ Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
 
 20230814: Fixed bug that did not account for missing CSA header in
           Numaris X (e.g. XA11A and XA30A) DICOMs.
+		  
+20240712: Fixed parameter naming inconsistencies: coilName and phaseEncSteps
