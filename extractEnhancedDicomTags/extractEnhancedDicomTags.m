@@ -45,6 +45,7 @@ function hdr = extractEnhancedDicomTags(fileName, verbose)
 %           not installed. Various minor speed improvements.
 % 20230814: Fixed bug that did not account for missing CSA header in
 %           Numaris X (e.g. XA11A and XA30A) DICOMs.
+% 20240712: Fixed field naming inconsistencies: phaseEncSteps and coilName
 %
 %To do:
 
@@ -164,7 +165,7 @@ assignPar('AcquisitionDuration',                                                
 %ENCODING SECTION
 assignPar('NumberOfFrames',                                                                                            'encoding.slices'            );
 assignPar('SharedFunctionalGroupsSequence.Item_1.MRFOVGeometrySequence.Item_1.MRAcquisitionFrequencyEncodingSteps',    'encoding.freqEncSteps'      );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRFOVGeometrySequence.Item_1.MRAcquisitionPhaseEncodingStepsInPlane', 'encoding.phaseEncStep'      );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRFOVGeometrySequence.Item_1.MRAcquisitionPhaseEncodingStepsInPlane', 'encoding.phaseEncSteps'      );
 assignPar('OversamplingPhase',                                                                                         'encoding.phaseOversampling' );
 assignPar('GeometryOfKSpaceTraversal',                                                                                 'encoding.kSpaceTrajectory'  );
 assignPar('SegmentedKSpaceTraversal',                                                                                  'encoding.segmentedKSpace'   );
@@ -203,7 +204,7 @@ assignPar('ComplexImageComponent', 'recon.complexComponent'    );
 assignPar('VolumetricProperties',  'recon.volumetricProperties');
 
 %COILS SECTION
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRReceiveCoilSequence.Item_1.ReceiveCoilName',                                         'coils.rx.CoilName'              );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRReceiveCoilSequence.Item_1.ReceiveCoilName',                                         'coils.rx.coilName'              );
 assignPar('SharedFunctionalGroupsSequence.Item_1.MRReceiveCoilSequence.Item_1.ReceiveCoilType',                                         'coils.rx.coilType'              );
 assignPar('SharedFunctionalGroupsSequence.Item_1.MRReceiveCoilSequence.Item_1.QuadratureReceiveCoil',                                   'coils.rx.quadRxCoil'            );
 assignPar('SharedFunctionalGroupsSequence.Item_1.MRReceiveCoilSequence.Item_1.MultiCoilDefinitionSequence.Item_1.MultiCoilElementUsed', 'coils.rx.multiCoilElementsUsed' );
