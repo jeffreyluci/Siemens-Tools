@@ -100,3 +100,6 @@
           filename consistent (contributed). Fixed json file extention.
           Added start and end timestamps with version logging. Improved
           log file incrementing function flow.
+		  
+20240403: Added EchoNumber to json files to improve workability with 
+          fmriprep and for consistency.
