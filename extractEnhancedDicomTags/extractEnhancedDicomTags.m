@@ -45,9 +45,13 @@ function hdr = extractEnhancedDicomTags(fileName, verbose)
 %           not installed. Various minor speed improvements.
 % 20230814: Fixed bug that did not account for missing CSA header in
 %           Numaris X (e.g. XA11A and XA30A) DICOMs.
-% 20240712: Fixed field naming inconsistencies: phaseEncSteps and coilName
+% 20230919: Fixed misnamed variable phaseEncStep -> phaseEncSteps
+% 20241001: Added several parameter entries, including ASL and study
+%           groups.
 %
 %To do:
+%
+%           Add spectroscopy group.
 
 
 %process verbosity for user junk
@@ -78,7 +82,7 @@ if ~isdicom(fileName)
 end
 
 %read in the DICOM header
-dcmHdr = dicominfo(fileName);
+dcmHdr = dicominfo(fileName, 'UseDictionaryVR', true);
 
 %check to make sure the DICOM is an enhanced DICOM by checking for a
 %field that should always exist in an enhanced DICOM
@@ -92,10 +96,13 @@ hdr.format.bitsAllocated    = dcmHdr.BitsAllocated;
 hdr.format.bitsStored       = dcmHdr.BitsStored;
 hdr.format.highBit          = dcmHdr.HighBit;
 hdr.format.dynamicRange     = dcmHdr.BitDepth;
+
+%FORMAT SECTION
 assignPar('LossyImageCompression', 'format.lossyCompression');
-assignPar('ColorType',             'format.colorType');
-assignPar('SpecificCharacterSet',  'format.characterSet');
-assignPar('ImageType',             'format.ImageType');
+assignPar('ColorType',             'format.colorType'       );
+assignPar('SpecificCharacterSet',  'format.characterSet'    );
+assignPar('ImageType',             'format.ImageType'       );
+assignPar('SoftwareVersions',      'format.softwareVersions');
 
 %PATIENT SECTION
 assignPar('PatientName',            'patient.name'       );
@@ -106,6 +113,8 @@ assignPar('PatientAge',             'patient.age '       );
 assignPar('PatientSize',            'patient.height'     );
 assignPar('PatientWeight',          'patient.weight'     );
 assignPar('PatientIdentityRemoved', 'patient.anonymized' );
+assignPar('BodyPartExamined',       'patient.bodyPart'   );
+assignPar('PatientComments',        'patient.comments'   );
 
 %SCANNER SECTION
 assignPar('Modality',              'scanner.modality'        );
@@ -115,6 +124,12 @@ assignPar('ManufacturerModelName', 'scanner.model'           );
 assignPar('DeviceSerialNumber',    'scanner.serialNumber'    );
 assignPar('SoftwareVersions',      'scanner.softwareVersion' );
 assignPar('InstitutionName',       'scanner.institution'     );
+
+%STUDY SECTION
+assignPar('StudyID',               'study.studyID');
+assignPar('StudyInstanceUID',               'study.studyInstanceUID');
+assignPar('SeriesInstanceUID',               'study.seriesInstanceUID');
+assignPar('FrameOfReferenceUID',    'study.FrameOfReferenceUID');
 
 %SESSION SECTION
 assignPar('StudyDate',                    'session.studyDate'         );
@@ -130,6 +145,9 @@ assignPar('ReferringPhysicianName',       'session.referringPhysician');
 assignPar('NameOfPhysiciansReadingStudy', 'session.readingPhysician'  );
 assignPar('SeriesNumber',                 'session.seriesNumber'      );
 assignPar('BodyPartExamined',             'session.bodyPart'          );
+assignPar('AcquisitionNumber',            'session.acquisitionNumber' );
+assignPar('InstanceNumber',               'session.instanceNumber'    );
+assignPar('ImageComments',                'session.imageComments'     );
 
 %SEQUENCE SECTION
 assignPar('ContentQualification',           'sequence.qualification'            );
@@ -146,6 +164,7 @@ assignPar('SharedFunctionalGroupsSequence.Item_1.MRTimingAndRelatedParametersSeq
 assignPar('SharedFunctionalGroupsSequence.Item_1.MRTimingAndRelatedParametersSequence.Item_1.GradientOutput',               'sequence.gradientOutput'         );
 
 %ACQ SECTION 
+assignPar('MRAcquisitionType',                                                                                 'acq.acqType'                 );
 assignPar('SharedFunctionalGroupsSequence.Item_1.MRTimingAndRelatedParametersSequence.Item_1.RepetitionTime',  'acq.TR'                      );
 assignPar('PerFrameFunctionalGroupsSequence.Item_1.MREchoSequence.Item_1.EffectiveEchoTime',                   'acq.TE'                      );
 assignPar('MRAcquisitionType',                                                                                 'acq.dimensionality'          );
@@ -163,14 +182,16 @@ assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.Paral
 assignPar('AcquisitionDuration',                                                                               'acq.duration'                );
 
 %ENCODING SECTION
-assignPar('NumberOfFrames',                                                                                            'encoding.slices'            );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRFOVGeometrySequence.Item_1.MRAcquisitionFrequencyEncodingSteps',    'encoding.freqEncSteps'      );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRFOVGeometrySequence.Item_1.MRAcquisitionPhaseEncodingStepsInPlane', 'encoding.phaseEncSteps'      );
-assignPar('OversamplingPhase',                                                                                         'encoding.phaseOversampling' );
-assignPar('GeometryOfKSpaceTraversal',                                                                                 'encoding.kSpaceTrajectory'  );
-assignPar('SegmentedKSpaceTraversal',                                                                                  'encoding.segmentedKSpace'   );
-assignPar('RectilinearPhaseEncodeReordering',                                                                          'encoding.phaseReordering'   );
-assignPar('NumberOfKSpaceTrajectories',                                                                                'encoding.numTrajectories'   );
+assignPar('NumberOfFrames',                                                                                            'encoding.slices'              );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRFOVGeometrySequence.Item_1.MRAcquisitionFrequencyEncodingSteps',    'encoding.freqEncSteps'        );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRFOVGeometrySequence.Item_1.MRAcquisitionPhaseEncodingStepsInPlane', 'encoding.phaseEncSteps'       );
+assignPar('OversamplingPhase',                                                                                         'encoding.phaseOversampling'   );
+assignPar('GeometryOfKSpaceTraversal',                                                                                 'encoding.kSpaceTrajectory'    );
+assignPar('SegmentedKSpaceTraversal',                                                                                  'encoding.segmentedKSpace'     );
+assignPar('RectilinearPhaseEncodeReordering',                                                                          'encoding.phaseReordering'     );
+assignPar('NumberOfKSpaceTrajectories',                                                                                'encoding.numTrajectories'     );
+assignPar('NumberOfTemporalPositions',                                                                                 'encoding.numTemporalPositions');
+assignPar('ResonantNucleus',                                                                                           'encoding.observeNucleus'      );
 
 %GEOMETRY SECTION
 assignPar('PerFrameFunctionalGroupsSequence.Item_1.PixelMeasuresSequence.Item_1.SliceThickness',                       'geometry.sliceThickness'     );
@@ -182,18 +203,21 @@ assignPar('SharedFunctionalGroupsSequence.Item_1.MRFOVGeometrySequence.Item_1.Pe
 assignPar('SharedFunctionalGroupsSequence.Item_1.MRFOVGeometrySequence.Item_1.InPlanePhaseEncodingDirection',          'geometry.inPlanePhaseEncDir' );
 
 %CONTRAST SECTION
-assignPar('AcquisitionContrast',                                                                          'contrast.acqContrast'             );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRImagingModifierSequence.Item_1.MagnetizationTransfer', 'contrast.magetizationTransfer'    );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRImagingModifierSequence.Item_1.BloodSignalNulling',    'contrast.bloodSignalNulling'      );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRImagingModifierSequence.Item_1.Tagging',               'contrast.tagging'                 );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.InversionRecovery',            'contrast.inversionRecovery'       );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.FlowCompensation',             'contrast.flowCompensation'        );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.Spoiling',                     'contrast.spoiling'                );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.T2Preparation',                'contrast.t2Preparation'           );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.SpectrallySelectedExcitation', 'contrast.spectralSelectiveExcite' );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.SpatialPresaturation',         'contrast.spatialPresaturation'    );
-assignPar('PhaseContrast',                                                                                'contrast.phaseContrast'           );
-assignPar('TimeOfFlightContrast',                                                                         'contrast.TOFContrast'             );
+assignPar('AcquisitionContrast',                                                                          'contrast.acqContrast'                  );
+assignPar('SpectrallySelectedSuppression',                                                                'contrast.spectrallySelectedSuppression');
+assignPar('SaturationRecovery',                                                                           'contrast.saturationRecovery'           );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRImagingModifierSequence.Item_1.MagnetizationTransfer', 'contrast.magetizationTransfer'         );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRImagingModifierSequence.Item_1.BloodSignalNulling',    'contrast.bloodSignalNulling'           );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRImagingModifierSequence.Item_1.Tagging',               'contrast.tagging'                      );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.InversionRecovery',            'contrast.inversionRecovery'            );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.FlowCompensation',             'contrast.flowCompensation'             );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.Spoiling',                     'contrast.spoiling'                     );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.T2Preparation',                'contrast.t2Preparation'                );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.SpectrallySelectedExcitation', 'contrast.spectralSelectiveExcite'      );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.SpatialPresaturation',         'contrast.spatialPresaturation'         );
+assignPar('PhaseContrast',                                                                                'contrast.phaseContrast'                );
+assignPar('TimeOfFlightContrast',                                                                         'contrast.TOFContrast'                  );
+assignPar('ArterialSpinLabelingContrast',                                                                 'contrast.ASLContrast'                  );
 
 %RECON SECTION
 assignPar('Rows',                  'recon.rows'                );
@@ -202,9 +226,10 @@ assignPar('KSpaceFiltering',       'recon.kSPaceFilter'        );
 assignPar('PixelPresentation',     'recon.pixelRepresentation' );
 assignPar('ComplexImageComponent', 'recon.complexComponent'    );
 assignPar('VolumetricProperties',  'recon.volumetricProperties');
+assignPar('BurnedInAnnotation',    'recon.burnedInAnnotation'  );
 
 %COILS SECTION
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRReceiveCoilSequence.Item_1.ReceiveCoilName',                                         'coils.rx.coilName'              );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRReceiveCoilSequence.Item_1.ReceiveCoilName',                                         'coils.rx.CoilName'              );
 assignPar('SharedFunctionalGroupsSequence.Item_1.MRReceiveCoilSequence.Item_1.ReceiveCoilType',                                         'coils.rx.coilType'              );
 assignPar('SharedFunctionalGroupsSequence.Item_1.MRReceiveCoilSequence.Item_1.QuadratureReceiveCoil',                                   'coils.rx.quadRxCoil'            );
 assignPar('SharedFunctionalGroupsSequence.Item_1.MRReceiveCoilSequence.Item_1.MultiCoilDefinitionSequence.Item_1.MultiCoilElementUsed', 'coils.rx.multiCoilElementsUsed' );
@@ -242,6 +267,14 @@ assignPar('PerFrameFunctionalGroupsSequence.Item_1.MRDiffusionSequence.Item_1.Di
 assignPar('PerFrameFunctionalGroupsSequence.Item_1.MRDiffusionSequence.Item_1.DiffusionBMatrixSequence.Item_1',           'diffusion.bMatrix'             );
 assignPar('PerFrameFunctionalGroupsSequence.Item_1.MRDiffusionSequence.Item_1.DiffusionBValue',                           'diffusion.bValue'              );
 
+%ASL SECTION
+assignMrProtPar('mrProt.sAsl.ulMode',             'asl.mode'            );
+assignMrProtPar('mrProt.sAsl,ulSuppressionMode',  'asl.suppressionMode' );
+assignMrProtPar('mrProt.sAsl.ulArrayLength',      'asl.arrayLength'     );
+assignMrProtPar('mrProt.sAsl.ulLabelingDuration', 'asl.labelingDuration');
+assignMrProtPar('mrProt.sAsl.ulDelayArraySize',   'asl.delayArraySize'  );
+assignMrProtPar('mrProt.sAsl.sPostLabelingDelay', 'asl.PLD'             );
+
 
 
     function assignPar(dcmFieldName, fieldName)
@@ -251,6 +284,22 @@ assignPar('PerFrameFunctionalGroupsSequence.Item_1.MRDiffusionSequence.Item_1.Di
             dcmFieldName = split(dcmFieldName, '.');
             fieldName = split(fieldName, '.');
             hdr = setfield(hdr, fieldName{:}, getfield(dcmHdr, dcmFieldName{:}));
+        catch
+            if verbose
+                disp(['The parameter ', horzcat(fieldName{:}), ' likely does not exist in the DICOM. Skipping.']);
+            end
+        end
+
+    end
+
+    function assignMrProtPar(mrProtFieldName, fieldName)
+        %assign field to new struct from the MrProt struct using
+        %preferred names
+
+        try
+            mrProtFieldName = split(mrProtFieldName, '.');
+            fieldName = split(fieldName, '.');
+            hdr = setfield(hdr, fieldName{:}, getfield(hdr, mrProtFieldName{:}));
         catch
             if verbose
                 disp(['The parameter ', horzcat(fieldName{:}), ' likely does not exist in the DICOM. Skipping.']);

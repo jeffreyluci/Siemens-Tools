@@ -31,11 +31,11 @@ Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
  
 ## Version History:
 
-20200518: First release
+20200518: First release.
 
-20200522: Fixed typos that created redundant fields, added help text
+20200522: Fixed typos that created redundant fields, added help text.
 
-20200528: Added verbosity option
+20200528: Added verbosity option.
 
 20220119: Switched to try/catch format to account for different tags
           existing or not depending on sequence/recon/etc options 
@@ -54,4 +54,6 @@ Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
 20230814: Fixed bug that did not account for missing CSA header in
           Numaris X (e.g. XA11A and XA30A) DICOMs.
 		  
-20240712: Fixed parameter naming inconsistencies: coilName and phaseEncSteps
+20240712: Fixed parameter naming inconsistencies: coilName and phaseEncSteps.
+
+20241001: Added several parameter entries, including ASL and study groups.
