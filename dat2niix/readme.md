@@ -103,3 +103,7 @@
 		  
 20240403: Added EchoNumber to json files to improve workability with 
           fmriprep and for consistency.
+		  
+20241010: Fixed incorrect conversion of echo time and slice timing from
+          microseconds to seconds. Factor incorrectly used was 10e6,
+          chenged to 1e6.
