@@ -92,7 +92,7 @@ function dat2niix(dicomDirectory, datDirectory, niftiDirectory, options)
 %           fmriprep and for consistency.
 % 20241010: Fixed incorrect conversion of echo time and slice timing from
 %           microseconds to seconds. Factor incorrectly used was 10e6,
-%           chenged to 1e6.
+%           chenged to 1e6. Also updated systematic shift is slice timing.
 
 
 arguments
@@ -452,7 +452,7 @@ for ii = 1:numEchos
 
     %fix echo time
     jsonStruct(ii).EchoTime = str2double(sprintf('%0.4f', TE(ii)/1e6));
-    jsonStruct(ii).SliceTiming = jsonStruct(1).SliceTiming + TE(ii)/1e6;
+    jsonStruct(ii).SliceTiming = jsonStruct(1).SliceTiming + TE(ii)/1e6 - TE(1)/1e6;
     jsonStruct(ii).EchoNumber = ii;
 
     curJsonTxt = jsonencode(jsonStruct(ii), PrettyPrint=true);

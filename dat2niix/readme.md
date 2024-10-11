@@ -106,4 +106,4 @@
 		  
 20241010: Fixed incorrect conversion of echo time and slice timing from
           microseconds to seconds. Factor incorrectly used was 10e6,
-          chenged to 1e6.
+          chenged to 1e6. Also updated systematic shift is slice timing.
