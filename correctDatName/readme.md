@@ -58,7 +58,7 @@ not match that of the dat filenames.
 # Acknowledgements:
 
 The NORDIC reconstruction functor (pipeline) is available at 
- <a href="matlab:web('https://webclient.us.api.teamplay.siemens-healthineers.com/c2p')">The Siemens Teamplay C2P Exchange.</a>
+[The Siemens Teamplay C<sup>2</sup>P Exchange.](https://webclient.us.api.teamplay.siemens-healthineers.com/c2p)
 
 
 # Version History:
