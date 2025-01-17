@@ -7,7 +7,9 @@ not match that of the dat filenames.
 
 # Usage:
 `correctDatNames`
+
 `correctDatNames(datDir, dicomDir)`
+
 `correctDatNames(datDir, dicomDir, debug=true)`
 
 **datDir:** path to the directory containing dat files needing corrections
@@ -59,5 +61,5 @@ The NORDIC reconstruction functor (pipeline) is available at
  <a href="matlab:web('https://webclient.us.api.teamplay.siemens-healthineers.com/c2p')">The Siemens Teamplay C2P Exchange.</a>
 
 
-# VERSION HISTORY:
+# Version History:
 20250117: Initial Release.
