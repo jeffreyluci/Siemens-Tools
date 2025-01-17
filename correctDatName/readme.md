@@ -27,7 +27,7 @@ not match that of the dat filenames.
 
  This function is intended to fix a problem that arises when it becomes
  necessary to use either the WashU-sourced Pythod NIfTI construction
- pipeline or this author's dat2niix.m MATLAB function. Both of those
+ pipeline or this author's [dat2niix.m MATLAB function](https://github.com/jeffreyluci/Siemens-Tools/tree/main/dat2niix). Both of those
  pipelines use the series instance UID archived in the DICOM file to build 
  the names of their corresponding dat files. Unfortunately, when it becomes
  necessary to correct metadata for a series, that series is assigned a new 
