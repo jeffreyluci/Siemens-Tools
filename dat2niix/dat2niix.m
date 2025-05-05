@@ -34,12 +34,12 @@ function dat2niix(dicomDirectory, datDirectory, niftiDirectory, options)
 %                                empty for successful jobs with the Verbose
 %                                option turned off. The default is no
 %                                logging.
-%         fileRange = A 2x1 matrix with the elements dnoting the firat and
-%                     last repetitions (volumes) to be included in a run.
-%                     This option is provided in order to process runs that
-%                     were ended prematurely or that has data missing for
-%                     whatever reason. Only the volumes in the range
-%                     requested will beincluded int he resulting NIfTIs.
+%         fileRange = [first, last] - A 2x1 matrix with the elements denoting 
+%                     the first and last repetitions (volumes) to be included 
+%                     in a run. This option is provided in order to process 
+%                     runs that were ended prematurely or that has data missing
+%                     for whatever reason. Only the volumes in the range
+%                     requested will be included in the resulting NIfTIs.
 % 
 % This function works in conjunction with both the CMRR multiband BOLD EPI 
 % sequence and the WashU NORDIC recon functor to produce multi-echo, 
