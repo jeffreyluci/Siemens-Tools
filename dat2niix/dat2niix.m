@@ -101,6 +101,10 @@ function dat2niix(dicomDirectory, datDirectory, niftiDirectory, options)
 %           changed to 1e6. Also updated systematic shift in slice timing.
 % 20250505: Added fileRagne option and created dcm2niixInfo object in JSON
 %           sidecar to be consistent with other third party info logging.
+% 20250602: Added feature to automatically detect a manually-stopped scan
+%           and process only the available number of images. Optimized the
+%           declaration andallocation of memory for the workList, which
+%           resulted in about a 6% speed improvement.
 
 
 arguments
@@ -114,7 +118,7 @@ arguments
     options.logFile             char               = 'none'
 end
 
-VERSION = 'v20250505';
+VERSION = 'v20250602';
 
 %enable execution time reporting if specifically requested
 if options.Verbose || options.reportTime
@@ -135,6 +139,18 @@ if options.highPrecision
 else
     TEPrecision = '%0.1f';
 end
+
+%Check to see if the number of DICOMs is equal to the number of dat files.
+%If not, assume the scan was stopped prematurely, and recon until the
+%point of stoppage.
+d=dir(dicomDirectory);
+ddir=dir(datDirectory);
+
+if numel(d) > numel(ddir) && options.fileRange(1) == 0
+    disp('The number of DICOM files is greater than the number of dat files.');
+    disp('Assuming the intent is to reconstruct image #1 through the last dat file.');
+    options.fileRange = [1 min(numel(d)-2, numel(ddir)-2)];
+end  
 
 %validate and log fileRange if requested
 fileRange = uint32(options.fileRange);
@@ -193,23 +209,20 @@ elseif options.Verbose
     disp([niftiDirectory ' found.']);
 end
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Step 1 - Parse the DICOMs and get the information %
 %          needed from the headers                  %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-d=dir(dicomDirectory);
-
 %Assume all files in dicomDirectory are DICOMs, and initialize 
 %the workList struct explicitly to ensure maximum efficency
-workList(numel(dicomDirectory)-1).dicomName    = [];
-workList(numel(dicomDirectory)-1).imgType      = [];
-workList(numel(dicomDirectory)-1).repNum       = [];
-workList(numel(dicomDirectory)-1).datFile      = [];
-workList(numel(dicomDirectory)-1).seriesUID    = [];
-workList(numel(dicomDirectory)-1).datFileMatch = [];
-workList(numel(dicomDirectory)-1).exclude      = [];
+workList(numel(d)-2).dicomName    = [];
+workList(numel(d)-2).imgType      = [];
+workList(numel(d)-2).repNum       = [];
+workList(numel(d)-2).datFile      = [];
+workList(numel(d)-2).seriesUID    = [];
+workList(numel(d)-2).datFileMatch = [];
+workList(numel(d)-2).exclude      = [];
 
 
 curDicom = 1;
