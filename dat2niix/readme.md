@@ -115,7 +115,7 @@
           microseconds to seconds. Factor incorrectly used was 10e6,
           chenged to 1e6. Also updated systematic shift is slice timing.
 
-20250505: Added fileRagne option and created dcm2niixInfo object in JSON
+20250505: Added fileRange option and created dcm2niixInfo object in JSON
           sidecar to be consistent with other third party info logging.
 
 20250602: Added feature to automatically detect a manually-stopped scan
