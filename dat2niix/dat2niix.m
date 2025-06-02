@@ -103,7 +103,7 @@ function dat2niix(dicomDirectory, datDirectory, niftiDirectory, options)
 %           sidecar to be consistent with other third party info logging.
 % 20250602: Added feature to automatically detect a manually-stopped scan
 %           and process only the available number of images. Optimized the
-%           declaration andallocation of memory for the workList, which
+%           declaration and allocation of memory for the workList, which
 %           resulted in about a 6% speed improvement.
 
 
