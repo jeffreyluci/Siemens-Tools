@@ -99,7 +99,7 @@ function dat2niix(dicomDirectory, datDirectory, niftiDirectory, options)
 % 20241010: Fixed incorrect conversion of echo time and slice timing from
 %           microseconds to seconds. Factor incorrectly used was 10e6,
 %           changed to 1e6. Also updated systematic shift in slice timing.
-% 20250505: Added fileRagne option and created dcm2niixInfo object in JSON
+% 20250505: Added fileRange option and created dcm2niixInfo object in JSON
 %           sidecar to be consistent with other third party info logging.
 % 20250602: Added feature to automatically detect a manually-stopped scan
 %           and process only the available number of images. Optimized the
