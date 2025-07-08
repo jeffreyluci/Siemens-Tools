@@ -40,6 +40,13 @@
                                   option turned off. The default is no
                                   logging.
 
+`fileRange = [first, last]` - A 2x1 matrix with the elements denoting the first and
+                     last repetitions (volumes) to be included in a run.
+                     This option is provided in order to process runs that
+                     were ended prematurely or that has data missing for
+                     whatever reason. Only the volumes in the range
+                     requested will beincluded int he resulting NIfTIs.
+
  # Discussion:
  
  This function works in conjunction with both the CMRR multiband BOLD EPI 
@@ -107,3 +114,11 @@
 20241010: Fixed incorrect conversion of echo time and slice timing from
           microseconds to seconds. Factor incorrectly used was 10e6,
           chenged to 1e6. Also updated systematic shift is slice timing.
+
+20250505: Added fileRange option and created dcm2niixInfo object in JSON
+          sidecar to be consistent with other third party info logging.
+
+20250602: Added feature to automatically detect a manually-stopped scan
+          and process only the available number of images. Optimized the
+          declaration and allocation of memory for the workList, which
+          resulted in about a 6% speed improvement.

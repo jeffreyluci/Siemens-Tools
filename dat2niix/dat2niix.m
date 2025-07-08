@@ -34,6 +34,12 @@ function dat2niix(dicomDirectory, datDirectory, niftiDirectory, options)
 %                                empty for successful jobs with the Verbose
 %                                option turned off. The default is no
 %                                logging.
+%         fileRange = [first, last] - A 2x1 matrix with the elements denoting 
+%                     the first and last repetitions (volumes) to be included 
+%                     in a run. This option is provided in order to process 
+%                     runs that were ended prematurely or that has data missing
+%                     for whatever reason. Only the volumes in the range
+%                     requested will be included in the resulting NIfTIs.
 % 
 % This function works in conjunction with both the CMRR multiband BOLD EPI 
 % sequence and the WashU NORDIC recon functor to produce multi-echo, 
@@ -92,20 +98,27 @@ function dat2niix(dicomDirectory, datDirectory, niftiDirectory, options)
 %           fmriprep and for consistency.
 % 20241010: Fixed incorrect conversion of echo time and slice timing from
 %           microseconds to seconds. Factor incorrectly used was 10e6,
-%           chenged to 1e6. Also updated systematic shift is slice timing.
+%           changed to 1e6. Also updated systematic shift in slice timing.
+% 20250505: Added fileRange option and created dcm2niixInfo object in JSON
+%           sidecar to be consistent with other third party info logging.
+% 20250602: Added feature to automatically detect a manually-stopped scan
+%           and process only the available number of images. Optimized the
+%           declaration and allocation of memory for the workList, which
+%           resulted in about a 6% speed improvement.
 
 
 arguments
-    dicomDirectory char
-    datDirectory   char
-    niftiDirectory char
-    options.Verbose       (1,1) logical = false
-    options.highPrecision (1,1) logical = false
-    options.reportTime    (1,1) logical = false
-    options.logFile       char = 'none'
+    dicomDirectory              char
+    datDirectory                char
+    niftiDirectory              char
+    options.Verbose       (1,1) logical            = false
+    options.highPrecision (1,1) logical            = false
+    options.reportTime    (1,1) logical            = false
+    options.fileRange     (1,2) double {isnumeric} = [0 0];
+    options.logFile             char               = 'none'
 end
 
-VERSION = 'v20241010';
+VERSION = 'v20250602';
 
 %enable execution time reporting if specifically requested
 if options.Verbose || options.reportTime
@@ -125,6 +138,33 @@ if options.highPrecision
     TEPrecision = '%0.3f';
 else
     TEPrecision = '%0.1f';
+end
+
+%Check to see if the number of DICOMs is equal to the number of dat files.
+%If not, assume the scan was stopped prematurely, and recon until the
+%point of stoppage.
+d=dir(dicomDirectory);
+ddir=dir(datDirectory);
+
+if numel(d) > numel(ddir) && options.fileRange(1) == 0
+    disp('The number of DICOM files is greater than the number of dat files.');
+    disp('Assuming the intent is to reconstruct image #1 through the last dat file.');
+    options.fileRange = [1 min(numel(d)-2, numel(ddir)-2)];
+end  
+
+%validate and log fileRange if requested
+fileRange = uint32(options.fileRange);
+%check if fileRange is only positive integers and non-zero
+if sum(options.fileRange) ~= 0
+    if ~all(fileRange == options.fileRange) || ~all(fileRange > 0)
+        error('Requested range of files to be processed is not valid.');
+    end
+    disp(['Range of files selected to process is from ', ...
+          fileRange(1), 'to ' fileRange(2)]);
+    fileRange = fileRange(1):fileRange(2);
+    rangeRequested = true;
+else
+    rangeRequested = false;
 end
 
 %Check to ensure prerequisites are installed
@@ -162,27 +202,27 @@ elseif options.Verbose
     disp([datDirectory ' found.']);
 end
 if ~exist(niftiDirectory, "dir")
-    error('The directory %s is not found.', niftiDirectory);
+    disp(['The directory %s is not found.', niftiDirectory]); %formatted incorrectly!
+    disp(['Creating: ', niftiDirectory]);
+    mkdir(niftiDirectory);
 elseif options.Verbose
     disp([niftiDirectory ' found.']);
 end
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Step 1 - Parse the DICOMs and get the information %
 %          needed from the headers                  %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-d=dir(dicomDirectory);
-
 %Assume all files in dicomDirectory are DICOMs, and initialize 
 %the workList struct explicitly to ensure maximum efficency
-workList(numel(dicomDirectory)-1).dicomName    = [];
-workList(numel(dicomDirectory)-1).imgType      = [];
-workList(numel(dicomDirectory)-1).repNum       = [];
-workList(numel(dicomDirectory)-1).datFile      = [];
-workList(numel(dicomDirectory)-1).seriesUID    = [];
-workList(numel(dicomDirectory)-1).datFileMatch = [];
+workList(numel(d)-2).dicomName    = [];
+workList(numel(d)-2).imgType      = [];
+workList(numel(d)-2).repNum       = [];
+workList(numel(d)-2).datFile      = [];
+workList(numel(d)-2).seriesUID    = [];
+workList(numel(d)-2).datFileMatch = [];
+workList(numel(d)-2).exclude      = [];
 
 
 curDicom = 1;
@@ -215,6 +255,11 @@ for ii = 3:numel(d)
             workList(curDicom).seriesUID = trimUID(hdr.SeriesInstanceUID);
             if curDicom == 1
                 mrProt = parseMrProt(hdr);
+            end
+            if rangeRequested && isempty(find(workList(curDicom).repNum == fileRange, 1))
+                workList(curDicom).exclude = true;
+            else
+                workList(curDicom).exclude = false;
             end
             curDicom = curDicom + 1;
         end
@@ -256,6 +301,12 @@ patientID = hdr.PatientID;
 % Step 2 - Match the DICOMs with the associated dat %
 %          files - both mag and phs as appropriate  %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%if range of files is requested, trim the workList appropriately
+if rangeRequested
+    excludedImages = [workList.exclude];
+    workList(excludedImages) = [];
+end
 
 for ii = 1:numel(workList)
     baseName = sprintf('%s%s_%s_', datDirectory, patientID);
@@ -340,9 +391,9 @@ numPointsRead  = niftiHdr.ImageSize(1);
 numPointsPhase = niftiHdr.ImageSize(2);
 numSlices      = niftiHdr.ImageSize(3);
 if length(niftiHdr.ImageSize)>3
-numReps        = niftiHdr.ImageSize(4);
+    numReps     = niftiHdr.ImageSize(4);
 else
-numReps=1;
+    numReps     = 1;
 end
 
 %Prepare to edit the TE listed in the parent and raw descriptions
@@ -391,6 +442,28 @@ for ii = 1:numel(workList)
     [~,sliceOrder] = sort([2:2:numSlices 1:2:numSlices-1]);
     rawStream = rawStream(:,:,sliceOrder,:);
     rawIM(:,:,:,:,ii) = rawStream;
+end
+
+%if there is a reange requested, trim the NIfTI data to exclude as appropriate
+%NOTE that if the scan was stopped prematurely, the number of NIfTI volumes
+%might be one less than the number of DICOM volumes if the last DICOM
+%volume is truncated due to stoppage. If that is true, then there is no
+%need to remove the excluded NIfTI images or change the header.
+if rangeRequested
+    if numel(workList) ~= niftiHdr(1).ImageSize(4)
+        rawIM(:,:,:,:,excludedImages) = [];
+        for ii = 1:numEchos
+            niftiHdr(ii).ImageSize(4) = numel(workList);
+        end
+        if options.Verbose
+            disp('Excluded images removed from NIfTI stream.');
+        end
+    else
+        if options.Verbose
+            disp('Requested range appears to be already excluded in NIfTI.');
+            disp('  Perhaps due to premature scan stoppage?');
+        end
+    end
 end
 
 
@@ -454,6 +527,21 @@ for ii = 1:numEchos
     jsonStruct(ii).EchoTime = str2double(sprintf('%0.4f', TE(ii)/1e6));
     jsonStruct(ii).SliceTiming = jsonStruct(1).SliceTiming + TE(ii)/1e6 - TE(1)/1e6;
     jsonStruct(ii).EchoNumber = ii;
+
+    %include dcm2niixInfo in JSON sidecar
+    jsonStruct(ii).dcm2niixInfo.version         = VERSION;
+    jsonStruct(ii).dcm2niixInfo.URL             = 'https://github.com/jeffreyluci/Siemens-Tools/tree/main/dat2niix';
+    jsonStruct(ii).dcm2niixInfo.dicomDirectory  = dicomDirectory;
+    jsonStruct(ii).dcm2niixInfo.datDirectory    = datDirectory;
+    jsonStruct(ii).dcm2niixInfo.niftiDirectory  = niftiDirectory;
+    jsonStruct(ii).dcm2niixInfo.logFile         = options.logFile;
+    jsonStruct(ii).dcm2niixInfo.highPrecisionTE = options.highPrecision;
+
+    %if range requested, note this in JSON sidecar
+    if rangeRequested
+        jsonStruct(ii).dcm2niixInfo.subsetOfImagesIncluded = 'true';
+        jsonStruct(ii).dcm2niixInfo.rangeOfImagesIncluded =  options.fileRange;
+    end
 
     curJsonTxt = jsonencode(jsonStruct(ii), PrettyPrint=true);
     if strcmp(workList(1).imgType, 'mag') || strcmp(workList(1).imgType, 'mag_sbref')
@@ -553,7 +641,7 @@ function dateOfVersion = checkDcm2niixVersion(options)
         fileNum = fileNum + 1;
         splitName{end} = num2str(fileNum);
         newFilename = fullfile(filePath, strcat(join(splitName, '-'), fileExt));
-    elseif numel(splitName) == 1 && isnan(fileNum)
+    elseif isscalar(splitName) && isnan(fileNum)
         fileNum = 1;
         splitName{end+1} = num2str(fileNum);
         newFilename = fullfile(filePath, strcat(join(splitName, '-'), fileExt));
