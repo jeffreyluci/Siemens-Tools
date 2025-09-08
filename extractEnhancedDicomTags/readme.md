@@ -57,3 +57,5 @@ Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
 20240712: Fixed parameter naming inconsistencies: coilName and phaseEncSteps.
 
 20241001: Added several parameter entries, including ASL and study groups.
+
+20250908: Added metadata for LOFT ASL sequences (PLDs, reps and b-values, it they exist)
