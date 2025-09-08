@@ -152,6 +152,7 @@ assignPar('InstanceNumber',               'session.instanceNumber'    );
 assignPar('ImageComments',                'session.imageComments'     );
 
 %SEQUENCE SECTION
+assignPar('PulseSequenceName',              'sequence.pulseSequenceName'        );
 assignPar('ContentQualification',           'sequence.qualification'            );
 assignPar('EchoPulseSequence',              'sequence.family'                   );
 assignPar('MultiPlanarExcitation',          'sequence.multiPlanarExtitation'    );
@@ -277,7 +278,8 @@ assignMrProtPar('mrProt.sAsl.ulLabelingDuration', 'asl.labelingDuration');
 assignMrProtPar('mrProt.sAsl.ulDelayArraySize',   'asl.delayArraySize'  );
 assignMrProtPar('mrProt.sAsl.sPostLabelingDelay', 'asl.PLD'             );
 
-if (isfield(hdr.mrProt, 'sWipMemBlock')) && (hdr.mrProt.sAsl.ulMode ~= 1)
+if strcmp(hdr.sequence.qualification, 'RESEARCH') && (isfield(hdr.mrProt, 'sWipMemBlock')) ... 
+        && (hdr.mrProt.sAsl.ulMode ~= 1) && contains(hdr.sequence.pulseSequenceName, 'tgse3d1')
     try
         hdr.asl.LOFT.PLD  = hdr.mrProt.sWipMemBlock.alFree(1:5);
         hdr.asl.LOFT.reps = hdr.mrProt.sWipMemBlock.alFree(7:11);
