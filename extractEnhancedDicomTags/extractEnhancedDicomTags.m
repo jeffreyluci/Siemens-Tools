@@ -48,6 +48,8 @@ function hdr = extractEnhancedDicomTags(fileName, verbose)
 % 20230919: Fixed misnamed variable phaseEncStep -> phaseEncSteps
 % 20241001: Added several parameter entries, including ASL and study
 %           groups.
+% 20250908: Added ASL data from LOFT C2P ASL sequences (PLDs, reps, and
+%           bvalues, if they exist).
 %
 %To do:
 %
@@ -274,6 +276,17 @@ assignMrProtPar('mrProt.sAsl.ulArrayLength',      'asl.arrayLength'     );
 assignMrProtPar('mrProt.sAsl.ulLabelingDuration', 'asl.labelingDuration');
 assignMrProtPar('mrProt.sAsl.ulDelayArraySize',   'asl.delayArraySize'  );
 assignMrProtPar('mrProt.sAsl.sPostLabelingDelay', 'asl.PLD'             );
+
+if (isfield(hdr.mrProt, 'sWipMemBlock')) && (hdr.mrProt.sAsl.ulMode ~= 1)
+    try
+        hdr.asl.LOFT.PLD  = hdr.mrProt.sWipMemBlock.alFree(1:5);
+        hdr.asl.LOFT.reps = hdr.mrProt.sWipMemBlock.alFree(7:11);
+        hdr.asl.LOFT.bval = hdr.mrProt.sWipMemBlock.alFree(13:17);
+    catch
+        disp('C2P ASL section not recognized. Skipping.');
+    end
+end
+
 
 
 
