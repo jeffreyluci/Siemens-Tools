@@ -271,21 +271,23 @@ assignPar('PerFrameFunctionalGroupsSequence.Item_1.MRDiffusionSequence.Item_1.Di
 assignPar('PerFrameFunctionalGroupsSequence.Item_1.MRDiffusionSequence.Item_1.DiffusionBValue',                           'diffusion.bValue'              );
 
 %ASL SECTION
-assignMrProtPar('mrProt.sAsl.ulMode',             'asl.mode'            );
-assignMrProtPar('mrProt.sAsl,ulSuppressionMode',  'asl.suppressionMode' );
-assignMrProtPar('mrProt.sAsl.ulArrayLength',      'asl.arrayLength'     );
-assignMrProtPar('mrProt.sAsl.ulLabelingDuration', 'asl.labelingDuration');
-assignMrProtPar('mrProt.sAsl.ulDelayArraySize',   'asl.delayArraySize'  );
-assignMrProtPar('mrProt.sAsl.sPostLabelingDelay', 'asl.PLD'             );
+if isfield(hdr.mrProt, 'sAsl') && hdr.mrProt.sAsl.ulMode ~= 1
+    assignMrProtPar('mrProt.sAsl.ulMode',             'asl.mode'            );
+    assignMrProtPar('mrProt.sAsl,ulSuppressionMode',  'asl.suppressionMode' );
+    assignMrProtPar('mrProt.sAsl.ulArrayLength',      'asl.arrayLength'     );
+    assignMrProtPar('mrProt.sAsl.ulLabelingDuration', 'asl.labelingDuration');
+    assignMrProtPar('mrProt.sAsl.ulDelayArraySize',   'asl.delayArraySize'  );
+    assignMrProtPar('mrProt.sAsl.sPostLabelingDelay', 'asl.PLD'             );
 
-if strcmp(hdr.sequence.qualification, 'RESEARCH') && (isfield(hdr.mrProt, 'sWipMemBlock')) ... 
-        && (hdr.mrProt.sAsl.ulMode ~= 1) && contains(hdr.sequence.pulseSequenceName, 'tgse3d1')
-    try
-        hdr.asl.LOFT.PLD  = hdr.mrProt.sWipMemBlock.alFree(1:5);
-        hdr.asl.LOFT.reps = hdr.mrProt.sWipMemBlock.alFree(7:11);
-        hdr.asl.LOFT.bval = hdr.mrProt.sWipMemBlock.alFree(13:17);
-    catch
-        disp('C2P ASL section not recognized. Skipping.');
+    if strcmp(hdr.sequence.qualification, 'RESEARCH') && (isfield(hdr.mrProt, 'sWipMemBlock')) ...
+            && (hdr.mrProt.sAsl.ulMode ~= 1) && contains(hdr.sequence.pulseSequenceName, 'tgse3d1')
+        try
+            hdr.asl.LOFT.PLD  = hdr.mrProt.sWipMemBlock.alFree(1:5);
+            hdr.asl.LOFT.reps = hdr.mrProt.sWipMemBlock.alFree(7:11);
+            hdr.asl.LOFT.bval = hdr.mrProt.sWipMemBlock.alFree(13:17);
+        catch
+            disp('C2P ASL section not recognized. Skipping.');
+        end
     end
 end
 
