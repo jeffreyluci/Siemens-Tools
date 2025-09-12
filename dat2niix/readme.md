@@ -73,7 +73,7 @@
  maintained and distributed at [Chris Rorden's GitHub.](https://github.com/rordenlab/dcm2niix)
  The M-file parseMrProt.m is maintained and distributed at [Jeff Luci's GitHub.](https://github.com/jeffreyluci/Siemens-Tools/tree/main/parseMrProt)
  All software called by or otherwise used by this M-file is subject to the
- license and citation requirements described on their GitHub pages.
+ license and citation requirements described on their respective GitHub pages.
 
  The NORDIC reconstruction functor (pipeline) is available at [The Siemens Teamplay C<sup>2</sup>P Exchange.](https://webclient.us.api.teamplay.siemens-healthineers.com/c2p)
 
@@ -113,7 +113,7 @@
 		  
 20241010: Fixed incorrect conversion of echo time and slice timing from
           microseconds to seconds. Factor incorrectly used was 10e6,
-          chenged to 1e6. Also updated systematic shift is slice timing.
+          changed to 1e6. Also updated systematic shift in slice timing.
 
 20250505: Added fileRange option and created dcm2niixInfo object in JSON
           sidecar to be consistent with other third party info logging.
