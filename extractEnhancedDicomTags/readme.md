@@ -82,7 +82,7 @@ Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
           to argument list. Moved verbose argument to options list. Added
           forceDiffusion, forceASL, and forceSpectro to options which
           will force application-specific parsing. Changed verification
-          of enhanced DICOM type by checking SOPClassUID, whcih should be
+          of enhanced DICOM type by checking SOPClassUID, which should be
           authoritative. Switched default behavior to not include mrProt
           in the output unless forced with new option. Moved the private
           tags in the proprietary header up one field for simplicity
