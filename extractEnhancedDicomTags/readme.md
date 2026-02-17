@@ -5,8 +5,8 @@
 
    header = extractEnhancedDicomTags(filename) reads in an enhanced DICOM
    header, and parses it for the most commonly-needed MR parameters. This
-   version assumes a Siemens file structure. Fields that do no exist are
-   skipped and not created in the returned struct.
+   version assumes a Siemens file structure. Fields that do not exist are
+   skipped and not created in the returned structure.
    
    Some application-specific tags and parameters are parsed when deemed
    applicable using logical checks and contents of the ImageType tag. User
@@ -77,7 +77,7 @@ Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
 20250908: Added metadata for LOFT ASL sequences (PLDs, reps and b-values, it they exist)
 
 20260217: Numerous niche bug fixes. Fixed Study/SeriesDescrioption mixup.
-          Added Spectro sections. Chaged default behavior to only parse
+          Added Spectro sections. Changed default behavior to only parse
           application-specific sections when appropriate. Added options
           to argument list. Moved verbose argument to options list. Added
           forceDiffusion, forceASL, and forceSpectro to options which
