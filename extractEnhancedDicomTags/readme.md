@@ -74,7 +74,7 @@ Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
 
 20241001: Added several parameter entries, including ASL and study groups.
 
-20250908: Added metadata for LOFT ASL sequences (PLDs, reps and b-values, it they exist)
+20250908: Added metadata for LOFT ASL sequences (PLDs, reps and b-values, if they exist)
 
 20260217: Numerous niche bug fixes. Fixed Study/SeriesDescrioption mixup.
           Added Spectro sections. Changed default behavior to only parse
