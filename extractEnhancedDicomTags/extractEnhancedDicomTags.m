@@ -1,4 +1,4 @@
-function hdr = extractEnhancedDicomTags(fileName, options)
+function hdr = extractEnhancedDicomTags(fileName, verbose)
 %   extractEnhancedDicomTags Parse an enhanced DICOM header into logical,
 %   human-readable struct.
 %
@@ -7,19 +7,9 @@ function hdr = extractEnhancedDicomTags(fileName, options)
 %   version assumes a Siemens file structure. Fields that do no exist are
 %   skipped and not created in the returned struct.
 %
-%   Some application-specific tags and parameters are parsed when deemed
-%   applicable using logical checks and contents of the ImageType tag. User
-%   can force parsing of these supported tags and parameters with the
-%   options arument.
-%
-%   header = extractEnhancedDicomTags(filename, options) enables the user
-%   to request non-default behavior. Arguments should be logical true or 
-%   false. The default for all options is false. Possible options include:
-%   verbose=true, which turns on verbose feedback; forceDiffusion = true, always
-%   process diffusion tags and parameters - even if data do not appear to be
-%   diffusion-related; forceASL=true, always process ASL-related tags and
-%   parameters; forceSpectro=true, always process spectroscopy-related tags
-%   and parameters; forceMrProt=true will include mrProt in the output.
+%   header = extractEnhancedDicomTags(filename, verbose) enables the user
+%   to request verbose feedback. The argument verbose should be a logical 
+%   true or false. The default is false.
 %
 %   If mrProt exists, it will be included in the structre in the field named
 %   "mrProt". If parseMrProt is installed (see below), the field mrProt
@@ -31,11 +21,9 @@ function hdr = extractEnhancedDicomTags(fileName, options)
 %   been de-identified in a certain way, or some other unusual use cases.
 %   If mrProt does not exist, it will not be returned.
 % 
-%   If parseMrProt does not exist on the path, mrProt will be treated as an 
-%   unparsed character array. It is recommended to use the function 
-%   parseMrProt, but it is not necessary. See comments for source material. 
-%   If mrProt is not forced to be returned in the options, mrProt will not 
-%   be returned in the output at all.
+%   It is recommended to use the function parseMrProt, but it is not
+%   necessary. See comments for source material. If parseMrProt is not
+%   installed, mrProt will be returned as an unparsed character array. 
 
 % Written by J. Luci: jeffrey.luci@rutgers.edu
 % https://github.com/jeffreyluci/Siemens-Tools/tree/main/extractEnhancedDicomTags
@@ -62,34 +50,24 @@ function hdr = extractEnhancedDicomTags(fileName, options)
 %           groups.
 % 20250908: Added ASL data from LOFT C2P ASL sequences (PLDs, reps, and
 %           bvalues, if they exist).
-% 20260217: Numerous niche bug fixes. Fixed Study/SeriesDescrioption mixup.
-%           Added Spectro sections. Chaged default behavior to only parse
-%           application-specific sections when appropriate. Added options
-%           to argument list. Moved verbose argument to options list. Added
-%           forceDiffusion, forceASL, and forceSpectro to options which
-%           will force application-specific parsing. Changed verification
-%           of enhanced DICOM type by checking SOPClassUID, whcih should be
-%           authoritative. Switched default behavior to not include mrProt
-%           in the output unless forced with new option. Moved the private
-%           tags in the proprietary header up one field for simplicity
-%           (i.e. eliminated the field tag0021_10fe).
+%
+%To do:
+%
+%           Add spectroscopy group.
 
 
-arguments
-    fileName                     char
-    options.verbose        (1,1) logical = false
-    options.forceDiffusion (1,1) logical = false
-    options.forceASL       (1,1) logical = false
-    options.forceSpectro   (1,1) logical = false
-    options.forceMrProt    (1,1) logical = false
+%process verbosity for user junk
+%default is no verbosity
+if ~exist('verbose', 'var')
+    verbose = false;
 end
 
 %check for string input for verbosity and correct fotmatting
-if ~islogical(options.verbose)
-    if strcmpi(options.verbose,'y') || strcmpi(options.verbose, 'yes')
-        options.verbose = true;
-    elseif strcmpi(options.verbose,'n') || strcmpi(options.verbose, 'no')
-        options.verbose = false;
+if ~islogical(verbose)
+    if strcmpi(verbose,'y') || strcmpi(verbose, 'yes')
+        verbose = true;
+    elseif strcmpi(verbose,'n') || strcmpi(verbose, 'no')
+        verbose = false;
     else
         error('Verbose argument should be a logical T/F');
     end
@@ -108,40 +86,25 @@ end
 %read in the DICOM header
 dcmHdr = dicominfo(fileName, 'UseDictionaryVR', true);
 
-%check to make sure the DICOM is an enhanced DICOM by checking for the
-%correct COP Class UID
-if ~strcmp(dcmHdr.SOPClassUID, '1.2.840.10008.5.1.4.1.1.4.1')
-    error([fileName, ' is not an enhanced DICOM.']);
+%check to make sure the DICOM is an enhanced DICOM by checking for a
+%field that should always exist in an enhanced DICOM
+if ~isfield(dcmHdr, 'SharedFunctionalGroupsSequence')
+    error([fileName, ' is not an Enhanced DICOM.']);
 end
 
-
-%Initialize hdr struct with tag that should always exist, then switch to
+%Initialize hdr struct with tags that should always exist, then switch to
 %try/catch function for everything else to ensure error-free parsing.
-hdr.format.fileFormat = dcmHdr.Format;
+hdr.format.bitsAllocated    = dcmHdr.BitsAllocated;
+hdr.format.bitsStored       = dcmHdr.BitsStored;
+hdr.format.highBit          = dcmHdr.HighBit;
+hdr.format.dynamicRange     = dcmHdr.BitDepth;
 
 %FORMAT SECTION
-assignPar('FormatVersion',         'format.formatVersion'    );
-assignPar('LossyImageCompression', 'format.lossyCompression' );
-assignPar('ColorType',             'format.colorType'        );
-assignPar('SpecificCharacterSet',  'format.characterSet'     );
-assignPar('ImageType',             'format.ImageType'        );
-assignPar('SoftwareVersions',      'format.softwareVersions' );
-assignPar('BitsAllocated',         'format.bitsAllocated'    );
-assignPar('BitsStored',            'format.bitStored'        );
-assignPar('HighBit',               'format.highBit'          );
-assignPar('BitDepth',              'format.dynamicRange'     );
-
-%UID SECTION
-assignPar('StudyInstanceUID',           'UID.studyInstanceUID'           );
-assignPar('FrameOfReferenceUID',        'UID.frameOfReferenceUID'        );
-assignPar('SeriesInstanceUID',          'UID.seriesInstanceUID'          );
-assignPar('SeriesInstanceUID',          'UID.seriesInstanceUID'          );
-assignPar('MediaStorageSOPClassUID',    'UID.mediaStorageSOPClassUID'    );
-assignPar('MediaStorageSOPInstanceUID', 'UID.mediaStorageSOPInstanceUID' );
-assignPar('TransferSyntaxUID',          'UID.transferSyntaxUID'          );
-assignPar('ImplementationClassUID',     'UID.implementationClassUID'     );
-assignPar('SOPClassUID',                'UID.SOPClassUID'                );
-assignPar('SOPInstanceUID',             'UID.SOPInstanceUID'             );
+assignPar('LossyImageCompression', 'format.lossyCompression');
+assignPar('ColorType',             'format.colorType'       );
+assignPar('SpecificCharacterSet',  'format.characterSet'    );
+assignPar('ImageType',             'format.ImageType'       );
+assignPar('SoftwareVersions',      'format.softwareVersions');
 
 %PATIENT SECTION
 assignPar('PatientName',            'patient.name'       );
@@ -165,25 +128,28 @@ assignPar('SoftwareVersions',      'scanner.softwareVersion' );
 assignPar('InstitutionName',       'scanner.institution'     );
 
 %STUDY SECTION
-assignPar('StudyID',          'study.studyID'          );
-assignPar('StudyDate',        'study.studyDate'        );
-assignPar('StudyTime',        'study.studyTime'        );
-assignPar('StudyDescription', 'study.studyDescription' );
+assignPar('StudyID',               'study.studyID');
+assignPar('StudyInstanceUID',               'study.studyInstanceUID');
+assignPar('SeriesInstanceUID',               'study.seriesInstanceUID');
+assignPar('FrameOfReferenceUID',    'study.FrameOfReferenceUID');
 
-%SERIES SECTION
-assignPar('SeriesDate',                  'series.seriesDate'         );
-assignPar('SeriesTime',                  'series.seriesTime'         );
-assignPar('ContentTime',                 'series.contentTime'        );
-assignPar('SeriesDescription',           'series.seriesDescription'  );
-assignPar('ProtocolName',                'series.protocolName'       );
-assignPar('OperatorsName',               'series.operator'           );
-assignPar('ReferringPhysicianName',      'series.referringPhysician' );
-assignPar('NameOfPhysicianReadingStudy', 'series.readingPhysician'   );
-assignPar('SeriesNumber',                'series.seriesNumber'       );
-assignPar('BodyPartExamined',            'series.bodyPart'           );
-assignPar('AcquisitionNumber',           'series.acquisitionNumber'  );
-assignPar('InstanceNumber',              'series.instanceNumber'     );
-assignPar('ImageComments',               'series.imageComments'      );
+%SESSION SECTION
+assignPar('StudyDate',                    'session.studyDate'         );
+assignPar('SeriesDate',                   'session.seriesDate'        );
+assignPar('StudyTime',                    'session.studyTime'         );
+assignPar('SeriesTime',                   'session.seriesTime'        );
+assignPar('ContentTime',                  'session.contentTime'       );
+assignPar('StudyDescription',             'session.studyDescription'  );
+assignPar('StudyDescription',             'session.seriesDescription' );
+assignPar('ProtocolName',                 'session.protocolName'      );
+assignPar('OperatorsName',                'session.operator'          );
+assignPar('ReferringPhysicianName',       'session.referringPhysician');
+assignPar('NameOfPhysiciansReadingStudy', 'session.readingPhysician'  );
+assignPar('SeriesNumber',                 'session.seriesNumber'      );
+assignPar('BodyPartExamined',             'session.bodyPart'          );
+assignPar('AcquisitionNumber',            'session.acquisitionNumber' );
+assignPar('InstanceNumber',               'session.instanceNumber'    );
+assignPar('ImageComments',                'session.imageComments'     );
 
 %SEQUENCE SECTION
 assignPar('PulseSequenceName',              'sequence.pulseSequenceName'        );
@@ -219,42 +185,42 @@ assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.Paral
 assignPar('AcquisitionDuration',                                                                               'acq.duration'                );
 
 %ENCODING SECTION
-assignPar('NumberOfFrames',                                                                                            'encoding.slices'               );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRFOVGeometrySequence.Item_1.MRAcquisitionFrequencyEncodingSteps',    'encoding.freqEncSteps'         );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRFOVGeometrySequence.Item_1.MRAcquisitionPhaseEncodingStepsInPlane', 'encoding.phaseEncSteps'        );
-assignPar('OversamplingPhase',                                                                                         'encoding.phaseOversampling'    );
-assignPar('GeometryOfKSpaceTraversal',                                                                                 'encoding.kSpaceTrajectory'     );
-assignPar('SegmentedKSpaceTraversal',                                                                                  'encoding.segmentedKSpace'      );
-assignPar('RectilinearPhaseEncodeReordering',                                                                          'encoding.phaseReordering'      );
-assignPar('NumberOfKSpaceTrajectories',                                                                                'encoding.numTrajectories'      );
-assignPar('NumberOfTemporalPositions',                                                                                 'encoding.numTemporalPositions' );
-assignPar('ResonantNucleus',                                                                                           'encoding.observeNucleus'       );
+assignPar('NumberOfFrames',                                                                                            'encoding.slices'              );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRFOVGeometrySequence.Item_1.MRAcquisitionFrequencyEncodingSteps',    'encoding.freqEncSteps'        );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRFOVGeometrySequence.Item_1.MRAcquisitionPhaseEncodingStepsInPlane', 'encoding.phaseEncSteps'       );
+assignPar('OversamplingPhase',                                                                                         'encoding.phaseOversampling'   );
+assignPar('GeometryOfKSpaceTraversal',                                                                                 'encoding.kSpaceTrajectory'    );
+assignPar('SegmentedKSpaceTraversal',                                                                                  'encoding.segmentedKSpace'     );
+assignPar('RectilinearPhaseEncodeReordering',                                                                          'encoding.phaseReordering'     );
+assignPar('NumberOfKSpaceTrajectories',                                                                                'encoding.numTrajectories'     );
+assignPar('NumberOfTemporalPositions',                                                                                 'encoding.numTemporalPositions');
+assignPar('ResonantNucleus',                                                                                           'encoding.observeNucleus'      );
 
 %GEOMETRY SECTION
-assignPar('PerFrameFunctionalGroupsSequence.Item_1.PixelMeasuresSequence.Item_1.SliceThickness',              'geometry.sliceThickness'     );
-assignPar('PerFrameFunctionalGroupsSequence.Item_1.PixelMeasuresSequence.Item_1.PixelSpacing',                'geometry.pixelSpacing'       );
-assignPar('SpacingBetweenSlices',                                                                             'geometry.sliceSpacing'       );
-assignPar('PatientPosition',                                                                                  'geometry.patientPosition'    );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRFOVGeometrySequence.Item_1.PercentSampling',               'geometry.percentSampling'    );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRFOVGeometrySequence.Item_1.PercentPhaseFieldOfView',       'geometry.percentPhaseFOV'    );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRFOVGeometrySequence.Item_1.InPlanePhaseEncodingDirection', 'geometry.inPlanePhaseEncDir' );
+assignPar('PerFrameFunctionalGroupsSequence.Item_1.PixelMeasuresSequence.Item_1.SliceThickness',                       'geometry.sliceThickness'     );
+assignPar('PerFrameFunctionalGroupsSequence.Item_1.PixelMeasuresSequence.Item_1.PixelSpacing',                         'geometry.pixelSpacing'       );
+assignPar('SpacingBetweenSlices',                                                                                      'geometry.sliceSpacing'       );
+assignPar('PatientPosition',                                                                                           'geometry.patientPosition'    );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRFOVGeometrySequence.Item_1.PercentSampling',                        'geometry.percentSampling'    );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRFOVGeometrySequence.Item_1.PercentPhaseFieldOfView',                'geometry.percentPhaseFOV'    );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRFOVGeometrySequence.Item_1.InPlanePhaseEncodingDirection',          'geometry.inPlanePhaseEncDir' );
 
 %CONTRAST SECTION
-assignPar('AcquisitionContrast',                                                                          'contrast.acqContrast'                   );
-assignPar('SpectrallySelectedSuppression',                                                                'contrast.spectrallySelectedSuppression' );
-assignPar('SaturationRecovery',                                                                           'contrast.saturationRecovery'            );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRImagingModifierSequence.Item_1.MagnetizationTransfer', 'contrast.magetizationTransfer'          );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRImagingModifierSequence.Item_1.BloodSignalNulling',    'contrast.bloodSignalNulling'            );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRImagingModifierSequence.Item_1.Tagging',               'contrast.tagging'                       );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.InversionRecovery',            'contrast.inversionRecovery'             );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.FlowCompensation',             'contrast.flowCompensation'              );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.Spoiling',                     'contrast.spoiling'                      );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.T2Preparation',                'contrast.t2Preparation'                 );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.SpectrallySelectedExcitation', 'contrast.spectralSelectiveExcite'       );
-assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.SpatialPresaturation',         'contrast.spatialPresaturation'          );
-assignPar('PhaseContrast',                                                                                'contrast.phaseContrast'                 );
-assignPar('TimeOfFlightContrast',                                                                         'contrast.TOFContrast'                   );
-assignPar('ArterialSpinLabelingContrast',                                                                 'contrast.ASLContrast'                   );
+assignPar('AcquisitionContrast',                                                                          'contrast.acqContrast'                  );
+assignPar('SpectrallySelectedSuppression',                                                                'contrast.spectrallySelectedSuppression');
+assignPar('SaturationRecovery',                                                                           'contrast.saturationRecovery'           );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRImagingModifierSequence.Item_1.MagnetizationTransfer', 'contrast.magetizationTransfer'         );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRImagingModifierSequence.Item_1.BloodSignalNulling',    'contrast.bloodSignalNulling'           );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRImagingModifierSequence.Item_1.Tagging',               'contrast.tagging'                      );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.InversionRecovery',            'contrast.inversionRecovery'            );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.FlowCompensation',             'contrast.flowCompensation'             );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.Spoiling',                     'contrast.spoiling'                     );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.T2Preparation',                'contrast.t2Preparation'                );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.SpectrallySelectedExcitation', 'contrast.spectralSelectiveExcite'      );
+assignPar('SharedFunctionalGroupsSequence.Item_1.MRModifierSequence.Item_1.SpatialPresaturation',         'contrast.spatialPresaturation'         );
+assignPar('PhaseContrast',                                                                                'contrast.phaseContrast'                );
+assignPar('TimeOfFlightContrast',                                                                         'contrast.TOFContrast'                  );
+assignPar('ArterialSpinLabelingContrast',                                                                 'contrast.ASLContrast'                  );
 
 %RECON SECTION
 assignPar('Rows',                  'recon.rows'                );
@@ -280,8 +246,7 @@ assignPar('SharedFunctionalGroupsSequence.Item_1.MRTransmitCoilSequence.Item_1.T
 mrProt = readFullFile(fileName);
 if isfield(dcmHdr.SharedFunctionalGroupsSequence.Item_1, 'Private_0021_10fe')
     assignPar('SharedFunctionalGroupsSequence.Item_1.Private_0021_10fe.Item_1', 'proprietary.tag0021_10fe');
-    hdr.proprietary = hdr.proprietary.tag0021_10fe;
-    if exist('parseMrProt', 'file') == 2
+    if exist('parseMrProt', 'file')
         try
             hdr.mrProt = parseMrProt(mrProt);
         catch
@@ -296,19 +261,17 @@ if isfield(dcmHdr.SharedFunctionalGroupsSequence.Item_1, 'Private_0021_10fe')
 elseif ~isempty(mrProt)
     hdr.mrProt.textDump = mrProt;
 
-elseif options.verbose
+elseif verbose
     disp('The proprietary section likely does not exist. Skipping.')
 end
 
 %DIFFUSION SECTION
-if contains(dcmHdr.ImageType, 'DIFFUSION') || options.forceDiffusion
-    assignPar('PerFrameFunctionalGroupsSequence.Item_1.MRDiffusionSequence.Item_1.DiffusionGradientDirectionSequence.Item_1', 'diffusion.gradientOrientation' );
-    assignPar('PerFrameFunctionalGroupsSequence.Item_1.MRDiffusionSequence.Item_1.DiffusionBMatrixSequence.Item_1',           'diffusion.bMatrix'             );
-    assignPar('PerFrameFunctionalGroupsSequence.Item_1.MRDiffusionSequence.Item_1.DiffusionBValue',                           'diffusion.bValue'              );
-end
+assignPar('PerFrameFunctionalGroupsSequence.Item_1.MRDiffusionSequence.Item_1.DiffusionGradientDirectionSequence.Item_1', 'diffusion.gradientOrientation' );
+assignPar('PerFrameFunctionalGroupsSequence.Item_1.MRDiffusionSequence.Item_1.DiffusionBMatrixSequence.Item_1',           'diffusion.bMatrix'             );
+assignPar('PerFrameFunctionalGroupsSequence.Item_1.MRDiffusionSequence.Item_1.DiffusionBValue',                           'diffusion.bValue'              );
 
 %ASL SECTION
-if (isfield(hdr.mrProt, 'sAsl') && contains(dcmHdr.ImageType, 'ASL')) || options.forceASL
+if isfield(hdr.mrProt, 'sAsl') && hdr.mrProt.sAsl.ulMode ~= 1
     assignMrProtPar('mrProt.sAsl.ulMode',             'asl.mode'            );
     assignMrProtPar('mrProt.sAsl,ulSuppressionMode',  'asl.suppressionMode' );
     assignMrProtPar('mrProt.sAsl.ulArrayLength',      'asl.arrayLength'     );
@@ -316,8 +279,6 @@ if (isfield(hdr.mrProt, 'sAsl') && contains(dcmHdr.ImageType, 'ASL')) || options
     assignMrProtPar('mrProt.sAsl.ulDelayArraySize',   'asl.delayArraySize'  );
     assignMrProtPar('mrProt.sAsl.sPostLabelingDelay', 'asl.PLD'             );
 
-    %Check if the sequence is a C2P from LOFT. This check is **NOT**
-    %exclusive, and not guaranteed to be accurate.
     if strcmp(hdr.sequence.qualification, 'RESEARCH') && (isfield(hdr.mrProt, 'sWipMemBlock')) ...
             && (hdr.mrProt.sAsl.ulMode ~= 1) && contains(hdr.sequence.pulseSequenceName, 'tgse3d1')
         try
@@ -330,35 +291,6 @@ if (isfield(hdr.mrProt, 'sAsl') && contains(dcmHdr.ImageType, 'ASL')) || options
     end
 end
 
-%SPECTRO SECTION
-if (isfield(hdr.mrProt, 'sSpecPara') && contains(dcmHdr.ImageType, 'SPECTROSCOPY')) || options.forceSpectro
-    assignMrProtPar('mrProt.sSpecPara.lPhaseCyclingType',      'spectro.phaseCyclingType'      );
-    assignMrProtPar('mrProt.sSpecPara.lPhaseEncodingType',     'spectro.phaseEncodingType'     );
-    assignMrProtPar('mrProt.sSpecPara.lRFExcitationBandwidth', 'spectro.RFExcitationBandwidth' );
-    assignMrProtPar('mrProt.sSpecPara.ucRemoveOversampling',   'spectro.removeOversampling'    );
-    assignMrProtPar('mrProt.sSpecPara.lAutoRefScanMode',       'spectro.autoRefScanMode'       );
-    assignMrProtPar('mrProt.sSpecPara.lAutoRefScanNo',         'spectro.autoRefScanNo'         );
-    assignMrProtPar('mrProt.sSpecPara.lDecouplingType',        'spectro.decouplingType'        );
-    assignMrProtPar('mrProt.sSpecPara.lNOEType',               'spectro.NOEType'               );
-    assignMrProtPar('mrProt.sSpecPara.lExcitationType',        'spectro.excitationType'        );
-    assignMrProtPar('mrProt.sSpecPara.lSpecAppl',              'spectro.specAppl'              );
-    assignMrProtPar('mrProt.sSpecPara.lSpectralSuppression',   'spectro.spectralSuppression'   );
-end
-
-%MRPROT SECTION
-if isfield(hdr, 'mrProt') && ~options.forceMrProt
-    %remove mrProt if not specifically requested
-    hdr = rmfield(hdr, 'mrProt');
-elseif isfield(hdr, 'mrProt')
-    %include mrProt, but ensure it is last in the structure name list
-    allFieldNames = fieldnames(hdr);
-    otherFieldNames = allFieldNames(~strcmp(allFieldNames, 'mrProt'));
-    newFieldOrder = [otherFieldNames; {'mrProt'}];
-    hdr = orderfields(hdr, newFieldOrder);
-end
-
-
-
 
 
 
@@ -370,7 +302,7 @@ end
             fieldName = split(fieldName, '.');
             hdr = setfield(hdr, fieldName{:}, getfield(dcmHdr, dcmFieldName{:}));
         catch
-            if options.verbose
+            if verbose
                 disp(['The parameter ', horzcat(fieldName{:}), ' likely does not exist in the DICOM. Skipping.']);
             end
         end
@@ -386,12 +318,13 @@ end
             fieldName = split(fieldName, '.');
             hdr = setfield(hdr, fieldName{:}, getfield(hdr, mrProtFieldName{:}));
         catch
-            if options.verbose
+            if verbose
                 disp(['The parameter ', horzcat(fieldName{:}), ' likely does not exist in the DICOM. Skipping.']);
             end
         end
 
     end
+
 
     function mrProt = readFullFile(fileName)
         fid = fopen(fileName, 'rt');
@@ -404,3 +337,5 @@ end
     end
 
 end
+
+
