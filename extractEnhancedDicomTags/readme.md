@@ -76,7 +76,7 @@ Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
 
 20250908: Added metadata for LOFT ASL sequences (PLDs, reps and b-values, if they exist)
 
-20260217: Numerous niche bug fixes. Fixed Study/SeriesDescrioption mixup.
+20260217: Numerous niche bug fixes. Fixed Study/SeriesDescription mixup.
           Added Spectro sections. Changed default behavior to only parse
           application-specific sections when appropriate. Added options
           to argument list. Moved verbose argument to options list. Added
