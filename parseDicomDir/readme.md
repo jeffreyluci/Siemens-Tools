@@ -54,3 +54,7 @@ error stops to simple text on screen so that use in a a loop does not halt
 the entire job. Fixed bug that did not correctly use the full path to a DICOM
 directory structure. Incorporated OS agnostic handling of file separators in 
 this fix.
+
+20240123: Fixed a bug that would halt the process upon encountering a non-image DICOM.
+
+20260413: Updated tags for enhanced DICOMs to be consistent with extractEnhancedDicomTags version 20260217.
