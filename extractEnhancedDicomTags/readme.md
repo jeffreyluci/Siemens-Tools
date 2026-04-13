@@ -87,3 +87,6 @@ Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
           in the output unless forced with new option. Moved the private
           tags in the proprietary header up one field for simplicity
           (i.e. eliminated the field tag0021_10fe).
+		  
+20260413: Updated tags for enhanced DICOMs to be consistent with
+          extractEnhancedDicomTags version 20260217.
