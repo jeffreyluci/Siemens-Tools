@@ -54,6 +54,8 @@ function parseDicomDir(filePath, options)
 %          separators in this fix.
 %20240123: Fixed a bug that would halt the process upon encountering a
 %          non-image DICOM.
+%20260413: Updated tags for enhanced DICOMs to be consistent with
+%          extractEnhancedDicomTags version 20260217.
 
 arguments
     filePath char
@@ -112,7 +114,7 @@ startTime = tic;
 for ii = 1:numItems
     curItem = ['Item_', num2str(ii)];
     if options.Verbose
-        fprintf('Processing item number: %d of %d items.\n\n', ii, numItems);
+        fprintf('Processing item number: %d of %d items.\n', ii, numItems);
     end
     %Get location of next DICOM file and read the enhanced DICOM header
     if isfield(dicomDir.DirectoryRecordSequence.(curItem), 'ReferencedFileID')
@@ -125,14 +127,14 @@ for ii = 1:numItems
             continue;
         end
         %Replace blank spaces in the protocol name with underscores
-        protocolName = regexprep(curHdr.session.protocolName, ' ', '_');
+        protocolName = regexprep(curHdr.series.protocolName, ' ', '_');
         
         %Construct the new human-readable names of directories and files
         scanFileName = [protocolName, '_', ...
                         sprintf('%04d', dicomDir.DirectoryRecordSequence.(curItem).InstanceNumber), ...
                         '.dcm'];
         scanDirName = [protocolName, '_', ...
-                       sprintf('%04d', curHdr.session.seriesNumber)];
+                       sprintf('%04d', curHdr.series.seriesNumber)];
         if ~exist([filePath, filesep, ...
                    'converted', filesep, ...
                    scanDirName], 'dir')
