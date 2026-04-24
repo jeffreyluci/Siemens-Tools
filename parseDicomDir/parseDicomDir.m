@@ -59,7 +59,7 @@ function parseDicomDir(filePath, options)
 %20260413: Updated tags for enhanced DICOMs to be consistent with
 %          extractEnhancedDicomTags version 20260217.
 %20260424: Updated to remove dpendency for extractEnhancedDicomTags, 
-%          greatly improve speed (~1000x) by using direct hex search of 
+%          greatly improve speed (~100x) by using direct hex search of 
 %          DICOM headers, removed graphical waitbar, and switched verbose 
 %          updates to not produce a newline every time.
 
