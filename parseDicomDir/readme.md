@@ -10,6 +10,8 @@
 
 `parseDicomDir(pathToDirectoryWithDICOMDIR, KeepOriginal= true/<false>)`
 
+`parseDicomDir(pathToDirectoryWithDICOMDIR, KeepConverted= true/<false>)`
+
 `parseDicomDir(pathToDirectoryWithDICOMDIR, Verbose=true/<false>)`
 
 `parseDicomDir(pathToDirectoryWithDICOMDIR, DICOMDIRcheck=<true>/false)`
