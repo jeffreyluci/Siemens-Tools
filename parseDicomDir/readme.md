@@ -8,9 +8,9 @@
 # Usage
 `parseDicomDir(pathToDirectoryWithDICOMDIR)`
 
-`parseDicomDir(pathToDirectoryWithDICOMDIR, KeepOriginal= true/<false>)`
+`parseDicomDir(pathToDirectoryWithDICOMDIR, KeepOriginal=true/<false>)`
 
-`parseDicomDir(pathToDirectoryWithDICOMDIR, KeepConverted= true/<false>)`
+`parseDicomDir(pathToDirectoryWithDICOMDIR, KeepConverted=true/<false>)`
 
 `parseDicomDir(pathToDirectoryWithDICOMDIR, Verbose=true/<false>)`
 
