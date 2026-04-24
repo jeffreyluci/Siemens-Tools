@@ -60,6 +60,6 @@ this fix.
 
 20260413: Updated tags for enhanced DICOMs to be consistent with extractEnhancedDicomTags version 20260217.
 
-20260424: Updated to remove dpendency for extractEnhancedDicomTags, 
+20260424: Updated to remove dependency for extractEnhancedDicomTags, 
           greatly improved speed (~100x) by using direct hex search of DICOM headers,
           removed graphical waitbar, and switched verbose updates to not produce a line every time.
