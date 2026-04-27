@@ -4,11 +4,10 @@ function parseDicomDir(filePath, options)
 %                the same naming convention used in Siemens D and E-line
 %                scanners for filesystem exports.
 %
-%Usage: parseDicomDir(pathToDirectoryWithDICOMDIR)
-%       parseDicomDir(pathToDirectoryWithDICOMDIR, KeepOriginal=false)
-%       parseDicomDir(pathToDirectoryWithDICOMDIR, KeepConverted=false)
-%       parseDicomDir(pathToDirectoryWithDICOMDIR, Verbose=true)
-%       parseDicomDir(pathToDirectoryWithDICOMDIR, DICOMDIRcheck=false)
+%Usage: parseDicomDir(pathToDicomDirectory)
+%       parseDicomDir(pathToDicomDirectory, KeepOriginal=false)
+%       parseDicomDir(pathToDicomDirectory, Verbose=true)
+%       parseDicomDir(pathToDicomDirectory, DICOMDIRcheck=false)
 %
 %This function will use the DICOM index file (named "DICOMDIR") in the root
 %of a DICOM archive directory structure to reoragnize the image-containing
@@ -16,8 +15,9 @@ function parseDicomDir(filePath, options)
 %used for the new structure is the same as the one used on Siemens D and
 %E-line MRI scanners when exporting DICOMs to a filesystem. This presumes
 %that the DICOMs are Siemens enhanced DICOMs generated on XA-line scanners
-%and later. Non-enhanced DICOMs are not supported. The reorganized 
-%directory is named "converted".
+%and later. Non-enhanced DICOMs are not supported. The function
+%extractEnhancedDicomTags is required, and can be obtained from the links
+%below. The reorganized directory is named "converted".
 %
 %Options:
 %KeepOriginal=false will move the DICOMs from the old structure to the new.
@@ -59,9 +59,11 @@ function parseDicomDir(filePath, options)
 %20260413: Updated tags for enhanced DICOMs to be consistent with
 %          extractEnhancedDicomTags version 20260217.
 %20260424: Updated to remove dpendency for extractEnhancedDicomTags, 
-%          greatly improve speed (~100x) by using direct hex search of 
-%          DICOM headers, removed graphical waitbar, and switched verbose 
-%          updates to not produce a newline every time.
+%          greatly (~100x) improve speed by directly parsing DICOM headers,
+%          and switched verbose updates to not produce a line every time.
+%20260427: Fixed bug in type casting of series numbers. Reduced preliminary
+%          data read size to reduce memory requirements and further speed  
+%          up the entire process.
 
 arguments
     filePath char
@@ -118,6 +120,7 @@ dicomDir = dicominfo(fullfile(filePath, fileName));
 numItems = length(fieldnames(dicomDir.DirectoryRecordSequence));
 
 %Begin to parse DICOM directory structure
+%waitbarFig = waitbar(0, 'Reorganizing DICOM directory structure ...');
 startTime = tic;
 for ii = 1:numItems
     curItem = ['Item_', num2str(ii)];
@@ -141,6 +144,7 @@ for ii = 1:numItems
         try
             %curHdr = extractEnhancedDicomTags(curFile);
             curHdr = getDicomTags(curFile);
+            curHdr.seriesNumber = str2double(curHdr.seriesNumber);
         catch
             continue;
         end
@@ -167,9 +171,9 @@ for ii = 1:numItems
                      fullfile(filePath, 'converted', scanDirName, scanFileName));
         end
     end
-    
+    %waitbar(ii/numItems, waitbarFig);
 end
-
+%close(waitbarFig);
 
 %clean up converted and DICOM directories and DICOMDIR file if requested
 if ~options.KeepConverted
@@ -196,7 +200,7 @@ fprintf('This took a total of %0.1f seconds, or %0.1f ms per file.\n', ...
 
 function hdr = getDicomTags(dicomFile)
 fid = fopen(dicomFile, 'r');
-data = fread(fid, 64000, 'uint8=>uint8')';
+data = fread(fid, 16000, 'uint8=>uint8')';
 fclose(fid);
 
 % Find Series Number (0020, 0011) - VR is usually IS (Integer String)
@@ -211,7 +215,9 @@ hdr.protocolName = parseValue(data, idx);
 end
 
 function val = parseValue(data, idx)
-    if isempty(idx), val = ''; return; end
+    if isempty(idx), val = ''; 
+        return; 
+    end
     idx = idx(1); % Take first occurrence
     % Explicit VR: Tag(4) + VR(2) + Length(2)
     len = double(typecast(data(idx+6:idx+7), 'uint16'));
