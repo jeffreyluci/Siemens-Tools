@@ -120,7 +120,6 @@ dicomDir = dicominfo(fullfile(filePath, fileName));
 numItems = length(fieldnames(dicomDir.DirectoryRecordSequence));
 
 %Begin to parse DICOM directory structure
-%waitbarFig = waitbar(0, 'Reorganizing DICOM directory structure ...');
 startTime = tic;
 for ii = 1:numItems
     curItem = ['Item_', num2str(ii)];
@@ -171,9 +170,7 @@ for ii = 1:numItems
                      fullfile(filePath, 'converted', scanDirName, scanFileName));
         end
     end
-    %waitbar(ii/numItems, waitbarFig);
 end
-%close(waitbarFig);
 
 %clean up converted and DICOM directories and DICOMDIR file if requested
 if ~options.KeepConverted
@@ -184,8 +181,8 @@ if ~options.KeepConverted
                   filePath);
     end
     rmdir( [filePath, 'converted'], 's');
-    rmdir( [filePath, 'DICOM'],     's');
-    delete([filePath, 'DICOMDIR']);
+    rmdir( [filePath, 'DICOM'    ], 's');
+    delete([filePath, 'DICOMDIR' ]     );
 end
 
 %Reset the warning state(s) that might have been changed
