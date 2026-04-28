@@ -1,228 +1,217 @@
-function parseDicomDir(filePath, options)
-%parseDicomDir - Parses a standard DICOM archive data directory structure
-%                and reorganizes it into human-readable directories using
-%                the same naming convention used in Siemens D and E-line
-%                scanners for filesystem exports.
+function [mrProt, jsonContents, zeroList] = parseMrProt(inputArg, jsonFileName)
+% parseMrProt - Parses MrProt from a DICOM acquired on a Siemens VB, VD,
+% VE, or XA line MRI scanners.
 %
-%Usage: parseDicomDir(pathToDicomDirectory)
-%       parseDicomDir(pathToDicomDirectory, KeepOriginal=false)
-%       parseDicomDir(pathToDicomDirectory, Verbose=true)
-%       parseDicomDir(pathToDicomDirectory, DICOMDIRcheck=false)
+% Usage:  mrprot = parseMrProt(input)
+%        [mrprot, json] = parseMrProt(input, jsonFileName)
+%        [mrprot, json, zeroList] = parseMrProt(input)
+% The input argument can be the file location of the DICOM, the DICOM 
+% header as provided by the MATLAB function dicominfo, or the plain text of
+% the DICOM tag (which supports input from the function 
+% extractEnahncedDicomTags). The resulting structure includes all fields 
+% included in MrProt, nested and indexed.
 %
-%This function will use the DICOM index file (named "DICOMDIR") in the root
-%of a DICOM archive directory structure to reoragnize the image-containing
-%DICOMs into a human-readable directory structure. The naming convention of
-%used for the new structure is the same as the one used on Siemens D and
-%E-line MRI scanners when exporting DICOMs to a filesystem. This presumes
-%that the DICOMs are Siemens enhanced DICOMs generated on XA-line scanners
-%and later. Non-enhanced DICOMs are not supported. The function
-%extractEnhancedDicomTags is required, and can be obtained from the links
-%below. The reorganized directory is named "converted".
+% The optional jsonFileName, if provided, will be overwritten with mrProt
+% parsed into JSON syntax. The JSON file contents are also available as an
+% optional return on the command line in the variable json. The JSON file 
+% will maintain the native Siemens array indexing, as opposed to the 
+% renumbered version used in MATLAB matricies (see last paragraph below).
 %
-%Options:
-%KeepOriginal=false will move the DICOMs from the old structure to the new.
-%                   The originals will not be retained. This saves disk
-%                   space but give up some data integrity. Do not use on
-%                   the only copy of data. The default is true, which only
-%                   copies the files with new names to the new directory.
-%
-%KeepConverted=true will move the new directory structure to the base path
-%                   and remove the DICOM and converted directories as well
-%                   as the DICOMDIR file. WARNING: This option will delete
-%                   any non-DICOM files in the structure.
-%
-%Verbose=true will echo to the screen the progress of the process as it
-%             works through each DICOM item listed in DICOMDIR. It is
-%             generally not necessary unless troubleshooting is required.
-%             The default is false.
-%
-%DICOMDIRcheck=false is necessary if the path to the archive structure
-%                    includes the string "DICOMDIR" in any mixed case. The
-%                    default is true and will stop the function if the path
-%                    includes that string.
-%
-%This function is maintained at this URL:
-%https://github.com/jeffreyluci/Siemens-Tools/tree/main/parseDicomDir
+% Parsing is most robust when the DICOM file location is given. This is the
+% preferred method of using this function since the other two can fail in
+% certain situaions and use cases. If mrProt exists in the DICOM file, 
+% parseMrProt should reliably find it. 
+% 
+% Note that mrProt may not be archived in all DICOMs based on the specific
+% software version, whether or not a PACS has touched the data, if is has
+% been de-identified in a certain way, or some other unusual use cases.
+% If mrProt does not exist, it will not be returned. If mrProt is not 
+% archived in the input argument, parseMrProt will return an error.
+% 
+% Note that field indicies may not correspond to those in the native MrProt 
+% as some Siemens arrays are numbered starting at 0, and others at 1. As a
+% result, all indicies are renumbered from 1 to comply with MATLAB
+% requirements. Those that are renumbered will be off by one, relative to 
+% the native formatting. The optional return  zeroList includes a list of 
+% all the renumbered fields. These fields are usually nested below a parent
+% field name.
 
 % Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
-% https://github.com/jeffreyluci/Siemens-Tools/tree/main/parseDicomDir
+% https://github.com/jeffreyluci/Siemens-Tools/tree/main/parseMrProt
 % VERSION HISTORY:
-%20230823: Initial Release.
-%20240117: Added management of pesky DICOM VR Dictionay warnings.
-%          Changed error stops to simple text on screen so that use in a 
-%          loop does not halt the entire job.
-%          Fixed bug that did not correctly use the full path to a DICOM
-%          directory structure. Incorporated OS agnostic handling of file
-%          separators in this fix.
-%20240123: Fixed a bug that would halt the process upon encountering a
-%          non-image DICOM.
-%20260413: Updated tags for enhanced DICOMs to be consistent with
-%          extractEnhancedDicomTags version 20260217.
-%20260424: Updated to remove dpendency for extractEnhancedDicomTags, 
-%          greatly (~100x) improve speed by directly parsing DICOM headers,
-%          and switched verbose updates to not produce a line every time.
-%20260427: Fixed bug in type casting of series numbers. Reduced preliminary
-%          data read size to reduce memory requirements and further speed  
-%          up the entire process.
+% 20230201: Initial Release
+% 20230220: Added support for enhanced DICOMs, including the highly
+%           questionable choice by Siemens to use numbers as structure
+%           field names in some (inconsistent) cases. This made it
+%           necessary to convert hex values to decimal as opposed to
+%           maintaining the ascii encoded hex value which was the 
+%           convention in the previous version.
+% 20230227: Returned support for maintaining class of hexadecimal values
+%           that was temporarily removed in the last version. Improved 
+%           tag searching in DICOM file. If a DICOM has mrProt, then this 
+%           method should find it always. Therefore, providing the DICOM
+%           filename is now the preferred method to parse.
+% 20230301: Added support for JSON file dumps and command line return.
+% 20230714: Added support for use case where Siemens uses ASCCONV END 
+%           multiple times in the proprietary header. This solution will 
+%           only work if there is only one ASCCONV BEGIN, but as far as I
+%           can tell, that should always be true.
+% 20230814: Fixed bug that did not account for missing CSA header in
+%           Numaris X (e.g. XA11A and XA30A) DICOMs.
 
-arguments
-    filePath char
-    options.Verbose       (1,1) logical = false
-    options.KeepOriginal  (1,1) logical = true
-    options.DICOMDIRcheck (1,1) logical = true
-    options.KeepConverted (1,1) logical = true
-end
-
-%Set this warning to off to avoid common but meaningless (in this use case)
-% VR Dictionary issues.
-warningDRState = warning('query', 'images:dicominfo:fileVRDoesNotMatchDictionary');
-warning('off', 'images:dicominfo:fileVRDoesNotMatchDictionary');
-
-%Check to ensure filePath directory exists
-if ~exist(filePath, 'dir')
-    if contains(filePath, 'DICOMDIR', 'IgnoreCase', true) && options.DICOMDIRcheck
-        error(['You may have given the location of the DICOMDIR file', newline, ...
-               'instead of the path to the directory. If not, use', newline, ...
-               '"DICOMDIR=false" as an argument and check the file path.']);
-    else
-        error(['Cannot find the directory: ', filePath]);
-    end
-end
-
-%Ensure filePath has trailing directory separator
-if ~(strcmp(filePath(end), filesep))
-    filePath = [filePath, filesep];
-end
-fileName = 'DICOMDIR';
-
-%Check to ensure DICOMDIR file exists
-if ~exist(fullfile(filePath, fileName), 'file')
-    fprintf(2, 'Cannot find: %s.', DICOMDIR);
-    return;
-end
-
-%check to make sure DICOMDIR is a readable DICOM file
-if ~isdicom(fullfile(filePath, fileName))
-    fprintf(2, '%s is not a DICOM file.', DICOMDIR);
-    return;
-end
-
-%check to see if the "converted" directory exists
-if ~exist([filePath, filesep, 'converted'], 'dir')
-    mkdir(filePath, 'converted');
-end
-
-%initialize variable to keep track of update message length
-prevMsgLen = 0;
-
-%Parse DICOMDIR and figure out how much work there is to do
-dicomDir = dicominfo(fullfile(filePath, fileName));
-numItems = length(fieldnames(dicomDir.DirectoryRecordSequence));
-
-%Begin to parse DICOM directory structure
-%waitbarFig = waitbar(0, 'Reorganizing DICOM directory structure ...');
-startTime = tic;
-for ii = 1:numItems
-    curItem = ['Item_', num2str(ii)];
-    if options.Verbose
-        fprintf(repmat('\b', 1, prevMsgLen));
-        msg = sprintf('Processing item number: %d of %d items.\n', ii, numItems);
-        fprintf('%s', msg);
-        extraSpaces = prevMsgLen - length(msg);
-        if extraSpaces > 0
-            fprintf(repmat(' ', 1, extraSpaces));
-            fprintf(repmat('\b', 1, extraSpaces));
-        end
-        prevMsgLen = length(msg);
-    end
-        
-    %Get location of next DICOM file and read the enhanced DICOM header
-    if isfield(dicomDir.DirectoryRecordSequence.(curItem), 'ReferencedFileID')
-        curFile = fullfile(filePath, ...
-                           dicomDir.DirectoryRecordSequence.(curItem).ReferencedFileID);
-        curFile = replace(curFile, '\', filesep); %ensure OS agnostic
-        try
-            %curHdr = extractEnhancedDicomTags(curFile);
-            curHdr = getDicomTags(curFile);
-            curHdr.seriesNumber = str2double(curHdr.seriesNumber);
-        catch
-            continue;
-        end
-        %Replace blank spaces in the protocol name with underscores
-        protocolName = regexprep(curHdr.protocolName, ' ', '_');
-        
-        %Construct the new human-readable names of directories and files
-        scanFileName = [protocolName, '_', ...
-                        sprintf('%04d', dicomDir.DirectoryRecordSequence.(curItem).InstanceNumber), ...
-                        '.dcm'];
-        scanDirName = [protocolName, '_', ...
-                       sprintf('%04d', curHdr.seriesNumber)];
-        if ~exist([filePath, filesep, ...
-                   'converted', filesep, ...
-                   scanDirName], 'dir')
-            mkdir([filePath, 'converted'], scanDirName);
-        end
-        %Move or copy the files as indicated by the KeepOriginal flag
-        if options.KeepOriginal
-            copyfile(curFile, ...
-                     fullfile(filePath, 'converted', scanDirName, scanFileName));
+%check to see if the input is a dicom or a header structure
+if ischar(inputArg)
+    if contains(inputArg, 'ASCCONV')
+        tagFullText = inputArg;
+    elseif isdicom(inputArg)
+        fileDump = readFullFile(inputArg);
+        if ~contains(fileDump, 'ASCCONV')
+            error(['No DICOM tag with MrProt located.', newline, 'Possibly de-identified?']);
         else
-            movefile(curFile, ...
-                     fullfile(filePath, 'converted', scanDirName, scanFileName));
+            tagFullText = fileDump;
         end
     end
-    %waitbar(ii/numItems, waitbarFig);
-end
-%close(waitbarFig);
-
-%clean up converted and DICOM directories and DICOMDIR file if requested
-if ~options.KeepConverted
-    convDirList = dir([filePath, 'converted', filesep]);
-    convDirList = convDirList(3:end);
-    for ii = 1:numel(convDirList)
-        movefile([filePath, 'converted', filesep, convDirList(ii).name], ...
-                  filePath);
+else
+    if isstruct(inputArg)
+        hdr = inputArg;
     end
-    rmdir( [filePath, 'converted'], 's');
-    rmdir( [filePath, 'DICOM'],     's');
-    delete([filePath, 'DICOMDIR']);
 end
 
-%Reset the warning state(s) that might have been changed
-warning(warningDRState(1).state, 'images:dicominfo:fileVRDoesNotMatchDictionary');
-
-%Report how long the process took
-endTime = toc(startTime);
-fprintf('This took a total of %0.1f seconds, or %0.1f ms per file.\n', ...
-    endTime, 1000*(endTime/numItems));
-
-
-
-function hdr = getDicomTags(dicomFile)
-fid = fopen(dicomFile, 'r');
-data = fread(fid, 16000, 'uint8=>uint8')';
-fclose(fid);
-
-% Find Series Number (0020, 0011) - VR is usually IS (Integer String)
-% Hex: 20 00 11 00
-idx = strfind(data, uint8([32 0 17 0]));
-hdr.seriesNumber = parseValue(data, idx);
-
-% Find Protocol Name (0018, 1030) - VR is usually LO (Long String)
-% Hex: 18 00 30 10
-idx = strfind(data, uint8([24 0 48 16]));
-hdr.protocolName = parseValue(data, idx);
-end
-
-function val = parseValue(data, idx)
-    if isempty(idx), val = ''; 
-        return; 
+%check to make sure order of input arguments is correct
+if exist('jsonFileName', 'var')
+    if islogical(jsonFileName)
+        error('Check the order of input arguments and classes.')
     end
-    idx = idx(1); % Take first occurrence
-    % Explicit VR: Tag(4) + VR(2) + Length(2)
-    len = double(typecast(data(idx+6:idx+7), 'uint16'));
-    val = char(data(idx+8 : idx+8+len-1));
-    val = strtrim(val);
 end
+
+if ~exist('hdr', 'var') && ~exist('tagFullText', 'var')
+    error(['No DICOM tag with MrProt located.', newline, 'Possibly de-identified or DICOM tag renamed?']);
+end
+
+if ~exist('tagFullText', 'var')
+    if isfield(hdr, 'Private_0029_1020')
+        tagFullText = char(hdr.Private_0029_1020)';
+    elseif isfield(hdr, 'Private_0029_1120')
+        tagFullText = char(hdr.Private_0029_1120)';
+    elseif isfield(hdr.SharedFunctionalGroupsSequence.Item_1.Private_0021_10fe.Item_1, 'Private_0021_1019')
+        tagFullText = char(hdr.SharedFunctionalGroupsSequence.Item_1.Private_0021_10fe.Item_1.Private_0021_1019)';
+    else
+        error(['No DICOM tag with MrProt located.', newline, 'Possibly de-identified or DICOM tag renamed?']);
+    end
+end
+
+
+
+clear('inputArg');
+
+%initialize mrProt & jsonContents
+mrProt = struct;
+jsonContents = ['{', newline];
+
+%create text list that records which arrays' numbering start at 0 instead of 1
+zeroList = '';
+
+%find beginning of mrprot in the text stream
+locationsCR  = strfind(tagFullText, newline);
+startString = strfind(tagFullText, 'ASCCONV BEGIN');
+
+lastSkippedCR = find(locationsCR > startString, 1 );
+startOfMrProt = locationsCR(lastSkippedCR) + 1;
+
+%find end of mrprot in the text stream
+endString = strfind(tagFullText, 'ASCCONV END');
+endString = min(endString(endString>startString)); %Sometimes, there is more than one of these.
+lastKeptCR = find(locationsCR < endString, 1, 'last' );
+endOfMrProt = locationsCR(lastKeptCR);
+
+%Strip off all extra text, leaving only mrprot
+mrProtText = tagFullText(startOfMrProt:endOfMrProt);
+mrProtText = [newline, mrProtText, newline];            %add CR to start and end
+mrProtText = replace(mrProtText, char(9), '');          %strip tabs
+mrProtText = replace(mrProtText, '""', '"');            %strip escaped double quotes
+mrProtText = replace(mrProtText, '__', '');             %strip out __
+mrProtLocationsCR = strfind(mrProtText, newline);
+
+for ii = 1:numel(mrProtLocationsCR)-2                   % minus 2 accounts for added CRs in previous block
+    %select next line of text, format it, and split opposite '='
+    curLine = mrProtText(mrProtLocationsCR(ii):mrProtLocationsCR(ii+1));
+    curLine = curLine(2:end-1);                         %strip out leading/trailing CR
+
+    %yank comments out of each line
+    curLine = strsplit(curLine, '#');
+    curLine = strtrim(curLine{1});
+    if isempty(curLine)
+        continue;
+    end
+
+    %begin parsing now
+    curLineSplit = strtrim(strsplit(curLine, '='));
+    assignmentVar = strsplit(curLineSplit{1}, '.');
+
+    %fix Siemens STUPID use of numbers as field names
+    % add number in square brackets to end of last fieldname to maintain
+    % consistency with every other time Siemens uses an arrayed field.
+    if ~isnan(str2double(assignmentVar{end}))
+        assignmentVar{end-1} = [assignmentVar{end-1},'[', assignmentVar{end}, ']'];
+        assignmentVar(end) = [];
+    end
+
+    for jj = 1:numel(assignmentVar)
+        %parse structure format of left side assignment
+        if contains(assignmentVar{1,jj}, '[')
+            assignmentVar{2,jj} = {str2double(regexp(assignmentVar{1,jj}, '\d\d?\d?\d?(?=\])', 'match'))};
+            assignmentVar{1,jj} = cell2mat(regexp(assignmentVar{1,jj}, '^[^\[]+', 'match'));
+            %check to see if the array index needs to be renumbered
+            if cell2mat(assignmentVar{2,jj}) == 0 || contains(zeroList, assignmentVar{1,jj})
+                assignmentVar{2,jj} = {cell2mat(assignmentVar{2,jj}) + 1};
+                if ~contains(zeroList, assignmentVar{1,jj})
+                    zeroList = [zeroList, assignmentVar{1,jj}, newline];
+                end
+            end
+        else
+            assignmentVar{2,jj} = {1};
+        end
+    end
+    %check if this is a struct size initializer. If so, skip it.
+    if strcmp(assignmentVar{1,end}, 'size')
+        continue
+    end
+
+
+    %Determine if right side is string or not, make appropriate assigment
+    %process hexadecimal values as strings to maintain class
+    if contains(curLineSplit{2}, '"') || contains(curLineSplit{2}, '0x')
+        assignmentVar{end} = {1:length(curLineSplit{2})};
+        mrProt = setfield(mrProt, assignmentVar{:}, curLineSplit{2});
+    else
+        mrProt = setfield(mrProt, assignmentVar{:}, str2double(curLineSplit{2}));
+    end
+    
+    %prepare json file contents
+    if contains(curLineSplit{2}, '0x')
+        curLineSplit{2} = ['"\u', curLineSplit{2}, '"'];
+    end
+    jsonContents = [jsonContents, '   "', curLineSplit{1}, '": ', curLineSplit{2}, ',', newline];
+end
+
+jsonContents = [jsonContents, '}', newline];
+
+% make sure zeroList exists, even if empty
+if ~isempty(zeroList)
+    zeroList = strtrim(zeroList);
+end
+
+%write json file if requested
+if exist('jsonFileName', 'var')
+    fid = fopen(jsonFileName, 'wt');
+    fwrite(fid, jsonContents, 'char');
+    fclose(fid);
+end
+
+    function fileDump = readFullFile(inputArg)
+        fid = fopen(inputArg, 'rt');
+        fileDump = fread(fid, inf, 'uint8=>char')';
+        fclose(fid);
+    end
 
 end
