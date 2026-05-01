@@ -61,9 +61,13 @@ this fix.
 20260413: Updated tags for enhanced DICOMs to be consistent with extractEnhancedDicomTags version 20260217.
 
 20260424: Updated to remove dpendency for extractEnhancedDicomTags, 
-          greatly improved speed (~100x) by using direct hex search of DICOM headers,
+          greatly improved speed (~500x) by using direct hex search of DICOM headers,
           removed graphical waitbar, and switched verbose updates to not produce a line every time.
 		  
 20260427: Fixed bug in type casting of series numbers. Reduced preliminary
           data read size to reduce memory requirements and further speed  
           up the entire process.
+		  
+20260501: Added safety feature to prevent removal of DICOM dierctory
+          structures that are not empty.
+		  

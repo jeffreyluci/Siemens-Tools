@@ -59,11 +59,13 @@ function parseDicomDir(filePath, options)
 %20260413: Updated tags for enhanced DICOMs to be consistent with
 %          extractEnhancedDicomTags version 20260217.
 %20260424: Updated to remove dpendency for extractEnhancedDicomTags, 
-%          greatly (~100x) improve speed by directly parsing DICOM headers,
+%          greatly (~500x) improve speed by directly parsing DICOM headers,
 %          and switched verbose updates to not produce a line every time.
 %20260427: Fixed bug in type casting of series numbers. Reduced preliminary
 %          data read size to reduce memory requirements and further speed  
 %          up the entire process.
+%20260501: Added safety feature to prevent removal of DICOM directory
+%          structures that are not empty.
 
 arguments
     filePath char
@@ -172,7 +174,33 @@ for ii = 1:numItems
     end
 end
 
-%clean up converted and DICOM directories and DICOMDIR file if requested
+%Clean up DICOM structures is requested
+if ~options.KeepOriginal
+    %Check if DICOM directory structure has any random files remaining.
+    %If so, do not remove the directory structure.
+    if ispc
+        [~,fileListing] = system(['dir ' filePath, 'DICOM\ /s /b /a-d']);
+        if ~contains(fileListing, 'File Not Found')
+            numFilesRemaining = strfind(fileListing, char(10));
+            fprintf('There are %d files remaining in the DICOM structure.\nSkipping removal of DICOM directory.\n', ...
+                     numFilesRemaining);
+            return;
+        end
+    else
+        [~,fileListing] = system(['find ' filePath, 'DICOM/ -type f | wc -l']);
+        numFilesRemaining = str2double(fileListing);
+        if numFilesRemaining ~= 0            
+            fprintf('There are %d files remaining in the DICOM structure.\nSkipping removal of DICOM directory.\n', ...
+                     numFilesRemaining);
+            return;
+        end
+    end     
+    %If we make it this far, it should be safe to remove these
+    rmdir( [filePath, 'DICOM'    ], 's');
+    delete([filePath, 'DICOMDIR' ]     );
+end
+
+%Clean up converted directory if requested
 if ~options.KeepConverted
     convDirList = dir([filePath, 'converted', filesep]);
     convDirList = convDirList(3:end);
@@ -181,8 +209,6 @@ if ~options.KeepConverted
                   filePath);
     end
     rmdir( [filePath, 'converted'], 's');
-    rmdir( [filePath, 'DICOM'    ], 's');
-    delete([filePath, 'DICOMDIR' ]     );
 end
 
 %Reset the warning state(s) that might have been changed
