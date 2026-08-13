@@ -8,7 +8,7 @@
    
    IM: a 3D matrix of raw image data without a header
    
-   When called without arguments, v will prompt the user to select
+   When called without arguments, v3 will prompt the user to select
    an image file. Both DICOMs and NIfTIs are supported. Both standard
    and enhanced DICOMs are supported. 
    
