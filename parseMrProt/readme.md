@@ -1,73 +1,69 @@
-# parseMrProt
+# parseDicomDir
 
- **parseMrProt** - Parses MrProt from a DICOM acquired on a Siemens VB, VD,
- VE, or XA line MRI scanners.
+**parseDicomDir** - Parses a standard DICOM archive data directory structure
+                and reorganizes it into human-readable directories using
+                the same naming convention used in Siemens D and E-line
+                scanners for filesystem exports.
 
 # Usage
-`mrprot = parseMrProt(input)`
+`parseDicomDir(pathToDirectoryWithDICOMDIR)`
 
-`[mrprot, json] = parseMrProt(input, jsonFileName)`
+`parseDicomDir(pathToDirectoryWithDICOMDIR, KeepOriginal= true/<false>)`
 
-`[mrprot, json, zeroList] = parseMrProt(input)`
+`parseDicomDir(pathToDirectoryWithDICOMDIR, Verbose=true/<false>)`
 
-**mrprot:** A structure that includes all fields contained in MrProt, 
-            nested and indexed.
+`parseDicomDir(pathToDirectoryWithDICOMDIR, DICOMDIRcheck=<true>/false)`
 
-**input:** Can be either the file location of the DICOM, or the
- DICOM header as provided by the MATLAB function dicominfo. 
- 
-**jsonFileName:** (optional) If provided, will be overwritten with mrProt
- parsed into JSON syntax. The JSON file contents are also available as an
- optional return on the command line in the variable json. The JSON file 
- will maintain the native Siemens array indexing, as opposed to the 
- renumbered version used in MATLAB matricies (see last paragraph below).
+**KeepOriginal:** (Optional) When set to false, will move the DICOMs from the old structure to the new.
+                   The originals will not be retained. This saves disk
+                   space but gives up some data integrity. Do not use on
+                   the only copy of data. The default is true, which only
+                   copies the files with new names to the new directory.
+				   
+**KeepConverted:** (Optional) When set to true, will move the new directory structure to the base path
+                   and remove the DICOM and converted directories as well
+                   as the DICOMDIR file. WARNING: This option will delete
+                   any non-DICOM files in the DICOM directory structure.				   
 
- # Discussion 
- Parsing is most robust when the DICOM file location is given. This is the
- preferred method of using this function since the other two can fail in
- certain situaions and use cases. If mrProt exists in the DICOM file, 
- parseMrProt should reliably find it.
- 
- Note that mrProt may not be archived in all DICOMs based on the specific
- software version, whether or not a PACS has touched the data, if is has
- been de-identified in a certain way, or some other unusual use cases.
- If mrProt does not exist, it will not be returned. If mrProt is not 
- archived in the input argument, parseMrProt will return an error.
- 
- Note that field indexes may not correspond to those in the native MrProt 
- as some Siemens arrays are numbered starting at 0, and others at 1. As a
- result, all indexes are renumbered from 1 to comply with MATLAB
- requirements. Those that are renumbered will be off by one. The optional 
- return  zeroList includes a list of all the renumbered fields. These 
- fields are usually nested below a parent field name.
- 
-[Test data](https://github.com/jeffreyluci/Siemens-Tools/tree/main/Test%20Data) are avilable to confirm proper function.
- 
+**Verbose:** (Optional) When set to true, will echo to the screen the progress of the process as it
+             works through each DICOM item listed in DICOMDIR. It is
+             generally not necessary unless troubleshooting is required.
+             The default is false.
+
+**DICOMDIRcheck:** Setting to false is necessary if the path to the archive structure
+                    includes the string "DICOMDIR" in any mixed case. The
+                    default is true and will stop the function if the path
+                    includes that string.
+
+# Discussion
+This function will use the DICOM index file (named "DICOMDIR") in the root
+of a DICOM archive directory structure to reoragnize the image-containing
+DICOMs into a human-readable directory structure. The naming convention
+used for the new structure is the same as the one used on Siemens D- and
+E-line MRI scanners when exporting DICOMs to a filesystem. This presumes
+that the DICOMs are Siemens enhanced DICOMs generated on XA-line scanners
+and later. Non-enhanced DICOMs are not supported. The reorganized directory
+is named "converted".
+
 Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
 
 # Version History:
+20230823:  Initial Release.
 
-20230201: Initial Release
+20240117:  Added management of pesky DICOM VR Dictionay warnings. Changed 
+error stops to simple text on screen so that use in a a loop does not halt 
+the entire job. Fixed bug that did not correctly use the full path to a DICOM
+directory structure. Incorporated OS agnostic handling of file separators in 
+this fix.
 
-20230220: Added support for enhanced DICOMs, including the highly
-           questionable choice by Siemens to use numbers as structure
-           field names in some (inconsistent) cases. This made it
-           necessary to convert hex values to decimal as opposed to
-           maintaining the ascii encoded hex value which was the 
-           convention in the previous version.   
-		   
-20230227:  Returned support for maintaining class of hexadecimal values
-           that was temporarily removed in the last version. Improved 
-           tag searching in DICOM file. If a DICOM has mrProt, then this 
-           method should find it always. Therefore, providing the DICOM
-           filename is now the preferred method to parse.
+20240123: Fixed a bug that would halt the process upon encountering a non-image DICOM.
 
-20230301:  Added support for JSON file dumps and command line return.
+20260413: Updated tags for enhanced DICOMs to be consistent with extractEnhancedDicomTags version 20260217.
 
-20230714:  Added support for use case where Siemens uses ASCCONV END 
-           multiple times in the proprietary header. This solution will 
-           only work if there is only one ASCCONV BEGIN, but as far as I
-           can tell, that should always be true.
-
-20230814:  Fixed bug that did not account for missing CSA header in
-           Numaris X (e.g. XA11A and XA30A) DICOMs.
+20260424: Updated to remove dpendency for extractEnhancedDicomTags, 
+          greatly improved speed (~100x) by using direct hex search of DICOM headers,
+          removed graphical waitbar, and switched verbose updates to not produce a line every time.
+		  
+20260427: Fixed bug in type casting of series numbers. Reduced preliminary
+          data read size to reduce memory requirements and further speed  
+          up the entire process.
