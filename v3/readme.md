@@ -2,9 +2,9 @@
 
    v3 is a simple 3-plane 3D image viewing tool for MATLAB.
 
-   Usage:
-   v3
-   v3(IM)
+   Usage:  
+   v3  
+   v3(IM)  
    
    IM: a 3D matrix of raw image data without a header
    
