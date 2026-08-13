@@ -12,7 +12,7 @@ if isdeployed || ~exist('IM', 'var')
             imgClass = class(IM);
             IM = cast(zeros(size(IM,1), size(IM,2), numel(listing)), imgClass);
             hdr(numel(listing)) = hdr;
-            for ii = 1:numel(listing)
+            for ii = 1:numel(listing) %#ok<*FXUP>
                 IM(:,:,ii) = dicomread(fullfile(dirName, listing(ii).name));
                 hdr(ii)    = dicominfo(fullfile(dirName, listing(ii).name));
             end
@@ -159,11 +159,11 @@ slice3EditBox = uicontrol(fig,  'Style',           'Edit', ...
                                 'Position',        [778 60 40 20], ...
                                 'Callback',        @specifySlice3);
                             
-slice1Label = uicontrol(fig,    'Style',           'Text', ...
+slice1Label = uicontrol(fig,    'Style',           'Text', ... 
                                 'Position',        [60 58 35 20], ...
                                 'BackgroundColor', bkgColor, ...
                                 'FontSize',        9, ...
-                                'String',          'Slice:');
+                                'String',          'Slice:'); %#ok<*NASGU>
                             
 slice2Label = uicontrol(fig,    'Style',           'Text', ...
                                 'Position',        [400 58 35 20], ...
@@ -534,21 +534,21 @@ end
         end
     end
 
-    function p1Moved(~,~)
+    function p1Moved(~,~) %#ok<*DEFNU>
         updatePanel1;
         pos1=get(P1, 'Position');
         sliceUndo(1) = pos1(1);
         sliceUndo(2) = pos1(2);
     end
 
-    function p2Moved(~,~)
+    function p2Moved(~,~) 
         updatePanel2;
         pos2=get(P2, 'Position');
         sliceUndo(1) = pos2(1);
         sliceUndo(3) = pos2(2);
     end
 
-    function p3Moved(~,~)
+    function p3Moved(~,~) 
         updatePanel3;
         pos3=get(P3, 'Position');
         sliceUndo(2) = pos3(1);
