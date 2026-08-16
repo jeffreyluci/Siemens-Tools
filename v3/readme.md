@@ -23,3 +23,6 @@ Multiple udocumented releases were distributed.
 20260813: This is a complete overhaul of the code to make use of 
 MATLAB's newer uifigure and uicontrol features. This is a faster
 and more robust version with numerous bug fixes and added features.
+20260816: Enabled window rescaling. Added series UID checks to gracefully
+fail if non-enhanced DICOMs of multiple different scans are detected in
+the directory specified.
