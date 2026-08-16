@@ -1,4 +1,36 @@
 function v3(IM)
+%v3 - 3 Pane volume grayscale image viewer
+%
+%Usage: v3
+%       v3(img)
+%
+%       img: (optional) scaled 3D volume image of any appropriate calss
+%
+%v3 is a light weight 3-pane viewer for general purpose viewing and 
+%inspection of scaled (monochrome) 3D vlume images. Without arguments, the
+%user will be presented with a file browser and propmted to select an image
+%file. Both NIfTIs and DICOMs are supported. If the DICOM is enhanced, v3
+%assumes it is multi-frame and imports all the image data from the one
+%file. If, however, the DICOM is not enhanced, it will assume that all
+%DICOM files in the same directory are part of the same volume, and
+%attempts to read use them all. If there are any DICOMs in that directory
+%that are NOT part of the same volume, a fatal error may result.
+%
+%The user may choose to export the volume as it appears to the MATLAB
+%workspace. This is useful if some manual image rotation is necessary to
+%generate a pleasing orientation for presentation purposes.
+
+% Written by J. Luci: jeffrey.luci@rutgers.edu
+% https://github.com/jeffreyluci/Siemens-Tools/tree/main/v3
+% Version History:
+%v1.0: (October, 2011) Initial Release
+%Numerous undocumented versions released, up to v3.2.
+%20260813: This is a complete overhaul of the code to make use of MATLAB's 
+% newer uifigure and uicontrol features. This is a faster and more robust 
+% version with numerous bug fixes and added features.
+%20260816: Enabled window rescaling. Added series UID checks to gracefully
+%fail if non-enhanced DICOMs of multiple different scans are detected in
+%the directory specified.
 
 if isdeployed || ~exist('IM', 'var')
     [fileName, dirName] = uigetfile({'*.dcm';'*.dicom';'*.ima';'*.nii';'*.nii.gz'}, 'Select Image File . . .');
@@ -7,6 +39,7 @@ if isdeployed || ~exist('IM', 'var')
         listing = dir([dirName, '*', ext]);
         listing = listing(3:end);
         hdr = dicominfo(fullfile(dirName, fileName));
+        UID = hdr.SeriesInstanceUID;
         if numel(listing) > 1 && ~strcmp(hdr.SOPClassUID, '1.2.840.10008.5.1.4.1.1.4.1')
             IM = dicomread(fullfile(dirName, fileName));
             imgClass = class(IM);
@@ -15,6 +48,9 @@ if isdeployed || ~exist('IM', 'var')
             for ii = 1:numel(listing) %#ok<*FXUP>
                 IM(:,:,ii) = dicomread(fullfile(dirName, listing(ii).name));
                 hdr(ii)    = dicominfo(fullfile(dirName, listing(ii).name));
+                if strcmp(hdr(ii).SOPInstanceUID, UID)
+                    error('DICOMs of mutliple scans detected in the directory.');
+                end
             end
             sliceLocs = [hdr.SliceLocation];
             [~,sliceOrder] = sort(sliceLocs);
@@ -47,7 +83,7 @@ set(fig,'Position',    [pos(1) pos(2) 1000 460], ...
         'ToolBar',     'none', ...
         'MenuBar',     'none', ...
         'NumberTitle', 'off', ...
-        'Resize',      'off');
+        'Resize',      'on');
 movegui(fig, 'center');
 bkgColor = get(fig, 'Color');
 
