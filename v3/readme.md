@@ -16,9 +16,9 @@ Author: Jeffrey Luci, jeffrey.luci@rutgers.edu
  
 # Version History:
 
-v1 (October, 2011): First release.
+v1 (October, 2011): First release.  <br>
 
-Multiple udocumented releases were distributed.
+Multiple udocumented releases were distributed.  <br>
 
 20260813: This is a complete overhaul of the code to make use of 
 MATLAB's newer uifigure and uicontrol features. This is a faster
