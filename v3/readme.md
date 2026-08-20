@@ -26,3 +26,7 @@ and more robust version with numerous bug fixes and added features.
 20260816: Enabled window rescaling. Added series UID checks to gracefully
 fail if non-enhanced DICOMs of multiple different scans are detected in
 the directory specified.
+20260820: Further transitioning to new MATLAB ui tools. Fixed window
+resizing issue. Removed rotation reset functionality. Fixed crosshair
+misalignment problems. Unified the windowing sliders into one to solve the
+error checking issues.

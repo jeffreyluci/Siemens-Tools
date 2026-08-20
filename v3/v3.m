@@ -31,6 +31,10 @@ function v3(IM)
 %20260816: Enabled window rescaling. Added series UID checks to gracefully
 %fail if non-enhanced DICOMs of multiple different scans are detected in
 %the directory specified.
+%20260820: Further transitioning to new MATLAB ui tools. Fixed window
+%resizing issue. Removed rotation reset functionality. Fixed crosshair
+%misalignment problems. Unified the windowing sliders into one to solve the
+%error checking issues.
 
 if isdeployed || ~exist('IM', 'var')
     [fileName, dirName] = uigetfile({'*.dcm';'*.dicom';'*.ima';'*.nii';'*.nii.gz'}, 'Select Image File . . .');
@@ -65,32 +69,65 @@ if isdeployed || ~exist('IM', 'var')
     end
 end
 
-maxInt=max(IM(:));
-minInt=min(IM(:));
+maxInt=double(max(IM(:)));
+minInt=double(min(IM(:)));
+if minInt==0
+    minInt = 1e-6;
+end
 
+level = graythresh(IM / max(IM(:)));   % Otsu threshold, normalized
+fg = IM(IM > level * max(IM(:)));
+[autoMin, autoMax] = deal(prctile(fg,2), prctile(fg,98));
+if autoMin < minInt
+    autoMin = minInt;
+end
+if autoMax > maxInt
+    autoMax = maxInt;
+end
+autoMin = double(autoMin);
+autoMax = double(autoMax);
+
+
+curInt = [autoMin, autoMax];
 rotateUndo =  [0 0 0];
-rotateReset = [0 0 0];
 sliceUndo = round(size(IM)/2);
 method='crop';
 
-fig = figure;
-setappdata(fig, 'visCh', 'on');
-pos=get(fig, 'Position');
+fig = uifigure;
+figPos=get(fig, 'Position');
 
-set(fig,'Position',    [pos(1) pos(2) 1000 460], ...
+set(fig,'Position',    [figPos(1) figPos(2) 1000 460], ...
         'Name',        ['View3d ' char(169) ' 2011-2026 Jeffrey Luci, ' ...
         'Rutgers University'], ...
         'ToolBar',     'none', ...
         'MenuBar',     'none', ...
         'NumberTitle', 'off', ...
-        'Resize',      'on');
+        'Resize',      'on', ...
+        'AutoResizeChildren', 'off');
 movegui(fig, 'center');
 bkgColor = get(fig, 'Color');
 
-axis1 = subplot(1, 3, 1);
-I1 = imagesc(IM(:,:,round(size(IM,3)/2)),[minInt maxInt]);
-colormap gray, axis image, axis off;
-hold on;
+uigrid = uigridlayout(fig, [1 3]);
+axis1 = uiaxes(uigrid);
+axis1.Layout.Row = 1;
+axis1.Layout.Column = 1;
+
+axis2 = uiaxes(uigrid);
+axis2.Layout.Row = 1;
+axis2.Layout.Column = 2;
+
+axis3 = uiaxes(uigrid);
+axis3.Layout.Row = 1;
+axis3.Layout.Column = 3;
+uigrid.RowHeight = {320, 320, 320};
+fig.SizeChangedFcn = @(src,evt) capAxesRowHeight(fig, uigrid);
+
+I1 = imagesc(axis1, IM(:,:,round(size(IM,3)/2)),[autoMin, autoMax]);
+set(axis1, 'XTick', [], 'YTick', [], 'Visible', 'off');
+axis1.Position = [11 120 320 320];
+colormap(axis1, "gray");
+axis1.Toolbar.Visible = 'off';
+hold(axis1, 'on');
 P1 = drawpoint(axis1, 'Position', [round(size(IM,2)/2), round(size(IM,1)/2)], ...
                       'Color',       'r', ...
                       'MarkerSize',  3, ...
@@ -98,11 +135,16 @@ P1 = drawpoint(axis1, 'Position', [round(size(IM,2)/2), round(size(IM,1)/2)], ..
                       'Deletable',   false, ...
                       'DrawingArea', [1,1,size(IM,1)-1,size(IM,2)-1], ...
                       'InteractionsAllowed', 'translate');
+P1.ContextMenu = uicontextmenu(fig);
+axis(axis1, 'image');
+drawnow('expose');
 
-axis2 = subplot(1, 3, 2);
-I2 = imagesc(squeeze(IM(:,round(size(IM,2)/2),:)), [minInt maxInt]);
-colormap gray, axis image, axis off;
-hold on;
+I2 = imagesc(axis2, squeeze(IM(:,round(size(IM,2)/2),:)), [autoMin, autoMax]);
+set(axis2, 'XTick', [], 'YTick', [], 'Visible', 'off');
+axis2.Position = [341 120 320 320];
+colormap(axis2, "gray");
+axis2.Toolbar.Visible = 'off';
+hold(axis2, 'on');
 P2 = drawpoint(axis2, 'Position', [round(size(IM,3)/2), round(size(IM,1)/2)], ...
                       'Color',       'r', ...
                       'MarkerSize',  3, ...
@@ -110,11 +152,17 @@ P2 = drawpoint(axis2, 'Position', [round(size(IM,3)/2), round(size(IM,1)/2)], ..
                       'Deletable',   false, ...
                       'DrawingArea', [1,1,size(IM,3)-1,size(IM,1)-1], ...
                       'InteractionsAllowed', 'translate');
+P2.ContextMenu = uicontextmenu(fig);
+axis(axis2, 'image');
+drawnow('expose');
 
-axis3 = subplot(1, 3, 3);
-I3 = imagesc(squeeze(IM(round(size(IM,1)/2),:,:)), [minInt maxInt]);
-colormap gray, axis image, axis off;
-hold on;
+
+I3 = imagesc(axis3, squeeze(IM(round(size(IM,1)/2),:,:)), [autoMin, autoMax]);
+set(axis3, 'XTick', [], 'YTick', [], 'Visible', 'off');
+axis3.Position = [671 120 320 320];
+colormap(axis3, "gray");
+axis3.Toolbar.Visible = 'off';
+hold(axis3, 'on');
 P3 = drawpoint(axis3, 'Position', [round(size(IM,3)/2), round(size(IM,2)/2)], ...
                       'Color',       'r', ...
                       'MarkerSize',  3, ...
@@ -122,49 +170,46 @@ P3 = drawpoint(axis3, 'Position', [round(size(IM,3)/2), round(size(IM,2)/2)], ..
                       'Deletable',   false, ...
                       'DrawingArea', [1,1,size(IM,3)-1,size(IM,2)-1], ...
                       'InteractionsAllowed', 'translate');
-
-set(axis1, 'Position', [0.01  0.18 0.3 0.8]);
-set(axis2, 'Position', [0.351 0.18 0.3 0.8]);
-set(axis3, 'Position', [0.69  0.18 0.3 0.8]);
+P3.ContextMenu = uicontextmenu(fig);
+axis(axis3, 'image');
+drawnow('expose');
 
 addlistener(P1, 'MovingROI', @updatePanel1);
 addlistener(P2, 'MovingROI', @updatePanel2);
 addlistener(P3, 'MovingROI', @updatePanel3);
+addlistener(P1, 'ROIMoved',  @placeCrosshairs);
+addlistener(P2, 'ROIMoved',  @placeCrosshairs);
+addlistener(P3, 'ROIMoved',  @placeCrosshairs);
 
 pos1=get(P1, 'Position');
 pos2=get(P2, 'Position');
 pos3=get(P3, 'Position');
 
-l1v = line(axis1, [pos1(2),pos1(2)], [1,size(IM,1)],    'Color', [0,0.4470,0.7410]);
-l1h = line(axis1, [1,size(IM,2)],    [pos1(1),pos1(1)], 'Color', [0,0.4470,0.7410]);
-l2v = line(axis2, [pos2(1),pos2(1)], [1,size(IM,1)],    'Color', [0,0.4470,0.7410]);
-l2h = line(axis2, [1,size(IM,3)],    [pos2(2),pos2(2)], 'Color', [0,0.4470,0.7410]);
-l3v = line(axis3, [pos3(1),pos3(1)], [1,size(IM,2)],    'Color', [0,0.4470,0.7410]);
-l3h = line(axis3, [1,size(IM,3)],    [pos3(2),pos3(2)], 'Color', [0,0.4470,0.7410]);
+drawnow('expose');
+l1v = line(axis1, [pos1(2),pos1(2)], [1,size(IM,1)],    'Color', [0,0.4470,0.7410], 'LineWidth', 1.1);
+l1h = line(axis1, [1,size(IM,2)],    [pos1(1),pos1(1)], 'Color', [0,0.4470,0.7410], 'LineWidth', 1.1);
+l2v = line(axis2, [pos2(1),pos2(1)], [1,size(IM,1)],    'Color', [0,0.4470,0.7410], 'LineWidth', 1.1);
+l2h = line(axis2, [1,size(IM,3)],    [pos2(2),pos2(2)], 'Color', [0,0.4470,0.7410], 'LineWidth', 1.1);
+l3v = line(axis3, [pos3(1),pos3(1)], [1,size(IM,2)],    'Color', [0,0.4470,0.7410], 'LineWidth', 1.1);
+l3h = line(axis3, [1,size(IM,3)],    [pos3(2),pos3(2)], 'Color', [0,0.4470,0.7410], 'LineWidth', 1.1);
 uistack(P1, 'top');
 uistack(P2, 'top');
 uistack(P3, 'top');
+drawnow;
 
 SCH = uicontrol(fig,            'Style',           'checkbox', ...
                                 'Value',           0, ...
                                 'String',          'Hide Crosshairs', ...
-                                'Position',        [160 10 130 20], ...
+                                'Position',        [160 15 130 20], ...
                                 'BackgroundColor', bkgColor, ...
                                 'Callback',        @setCrosshairs);
               
 cropRotate = uicontrol(fig,     'Style',           'checkbox', ...
                                 'Value',           1, ...
                                 'String',          'Crop Rotated Volume', ...
-                                'Position',        [20 30 130 20], ...
+                                'Position',        [20 15 130 20], ...
                                 'BackgroundColor', bkgColor);
                      
-rotateResetButton=uicontrol(fig,'Style',           'pushbutton', ....
-                                'String',          'Reset Rotations', ...
-                                'Position',        [35 7 100 20], ...
-                                'Enable',          'off', ...
-                                'Callback',        @resetRotations);
-
-
 rotateA1EditBox = uicontrol(fig,'Style',           'Edit', ...
                                 'String',          '0', ...
                                 'Position',        [140 60 40 20], ...
@@ -231,34 +276,28 @@ rotate3Label = uicontrol(fig,   'Style',           'Text', ...
                                 'FontSize',        11, ...
                                 'String',          char(176));
 
-              
-maxSlider = uicontrol(fig,      'Style',           'Slider', ...
-                                'Position',        [300 30 200 20], ...
-                                'Max',             max(IM(:))*1.01, ...
-                                'Min',             min(IM(:)), ...
-                                'Value',           max(IM(:)), ...                        
-                                'Callback',        @scaleMaxInt);
+intSlider = uislider(fig,       "range");
+intSlider.Position =        [300 23 200 3];
+intSlider.Limits =          [double(min(IM(:))), double(max(IM(:))*1.01)];
+intSlider.MajorTicks=      [];
+intSlider.MinorTicks =    [];
+intSlider.Value =           [autoMin, autoMax];                       
+intSlider.ValueChangedFcn =        @scaleInt;
 
-minSlider = uicontrol(fig,      'Style',           'Slider', ...
-                                'Position',        [300 10 200 20], ...
-                                'Max',             max(IM(:))*1.01, ...
-                                'Min',             min(IM(:)), ...
-                                'Value',           min(IM(:)), ...
-                                'Callback',        @scaleMinInt);
-                    
-maxSliderLabel = uicontrol(fig, 'Style',           'Text', ...
-                                'Position',        [500 26 130 20], ...
+sliderLabel    = uicontrol(fig, 'Style',           'Text', ...
+                                'Position',        [505 15 90 20], ...
                                 'BackgroundColor', bkgColor, ...
-                                'String',          'Maximum Intensity');
-                         
-minSliderLabel = uicontrol(fig, 'Style',           'Text', ...
-                                'Position',        [500 6 130 20], ...
-                                'BackgroundColor', bkgColor, ...
-                                'String',          'Minimum Intensity');   
+                                'String',          'Windowing Control');
+
+autoWindowButton =uicontrol(fig,'Style',           'pushbutton', ...
+                                'String',          'Auto Window', ...
+                                'Position',        [610 15 100 25], ...
+                                'Enable',          'off', ...
+                                'Callback',        @autoWindow);
                          
 exportDataButton =uicontrol(fig,'Style',           'pushbutton', ...
                                 'String',          'Export Volume to Workspace', ...
-                                'Position',        [800 10 175 25], ...
+                                'Position',        [800 15 175 25], ...
                                 'Callback',        @exportData);
                             
 if isdeployed
@@ -270,41 +309,56 @@ end
         pos1=get(P1, 'Position');
         pos2=get(P2, 'Position');
         pos3=get(P3, 'Position');
+        placeCrosshairs;
         I2.CData = squeeze(IM(:,round(pos1(1)),:));
         set(P2, 'Position', [pos2(1), pos1(2)]);
         set(P3, 'Position', [pos3(1), pos1(1)]);
         I3.CData= squeeze(IM(round(pos1(2)),:,:));
         set(slice2EditBox, 'String', num2str(round(pos1(1))));
         set(slice3EditBox, 'String', num2str(round(pos1(2))));
-        setCrosshairs;
         drawnow;
     end
 
     function updatePanel2(~,~)
-        pos1=round(get(P1, 'Position'));
-        pos2=round(get(P2, 'Position'));
-        pos3=round(get(P3, 'Position'));
+        pos1=get(P1, 'Position');
+        pos2=get(P2, 'Position');
+        pos3=get(P3, 'Position');
+        placeCrosshairs;
         I1.CData = squeeze(IM(:,:,round(pos2(1))));
         set(P1, 'Position', [pos1(1), pos2(2)]);
         set(P3, 'Position', [pos2(1), pos3(2)]);
         I3.CData = squeeze(IM(round(pos2(2)),:,:));
         set(slice1EditBox, 'String', num2str(round(pos2(1))));
         set(slice3EditBox, 'String', num2str(round(pos1(2))));
-        setCrosshairs;
         drawnow;
     end
 
     function updatePanel3(~,~)
-        pos1=round(get(P1, 'Position'));
-        pos2=round(get(P2, 'Position'));
-        pos3=round(get(P3, 'Position'));
+        pos1=get(P1, 'Position');
+        pos2=get(P2, 'Position');
+        pos3=get(P3, 'Position');
+        placeCrosshairs;
         I1.CData = squeeze(IM(:,:,round(pos3(1))));
         set(P1, 'Position', [pos3(2), pos1(2)]);
         set(P2, 'Position', [pos3(1), pos2(2)]);
         I2.CData = squeeze(IM(:,round(pos3(2)),:));
         set(slice1EditBox, 'String', num2str(round(pos2(1))));
         set(slice2EditBox, 'String', num2str(round(pos1(1))));
-        setCrosshairs;
+        drawnow;
+    end
+
+    function placeCrosshairs(~,~)
+        pos1=get(P1, 'Position');
+        pos2=get(P2, 'Position');
+        pos3=get(P3, 'Position');
+        set(l1v, 'XData', [pos1(1),pos1(1)], 'YData', [1,size(IM,1)]);
+        set(l1h, 'XData', [1,size(IM,2)], 'YData', [pos1(2),pos1(2)]);
+
+        set(l2v, 'XData', [pos2(1),pos2(1)], 'YData', [1,size(IM,1)]);
+        set(l2h, 'XData', [1,size(IM,3)], 'YData', [pos2(2),pos2(2)]);
+
+        set(l3v, 'XData', [pos3(1),pos3(1)], 'YData', [1,size(IM,2)]);
+        set(l3h, 'XData', [1,size(IM,3)], 'YData', [pos3(2),pos3(2)]);
         drawnow;
     end
 
@@ -329,44 +383,29 @@ end
             set(l2h, 'Visible', 'on');
             set(l3v, 'Visible', 'on');
             set(l3h, 'Visible', 'on');
-            set(l1v, 'XData', [pos1(1),pos1(1)], 'YData', [1,size(IM,1)]);
-            set(l1h, 'XData', [1,size(IM,2)], 'YData', [pos1(2),pos1(2)]);
-
-            set(l2v, 'XData', [pos2(1),pos2(1)], 'YData', [1,size(IM,1)]);
-            set(l2h, 'XData', [1,size(IM,3)], 'YData', [pos2(2),pos2(2)]);
-
-            set(l3v, 'XData', [pos3(1),pos3(1)], 'YData', [1,size(IM,2)]);
-            set(l3h, 'XData', [1,size(IM,3)], 'YData', [pos3(2),pos3(2)]);
+            drawnow('expose');
         end
     end
 
-    function scaleMaxInt(maxSlider, ~, ~)
-        oldVal=maxInt;
-        newVal=get(maxSlider, 'Value');
-        if newVal <= get(minSlider, 'Value')
-            set(maxSlider, 'Value', oldVal);
-            return;
+    function scaleInt(~,~)
+        if intSlider.Value(2) <= intSlider.Value(1)
+            %set(intSlider, Value, curInt);
+            intSlider.Value = curInt;
         else
-            maxInt=newVal;
-            set(axis1, 'CLim', [minInt, maxInt]);
-            set(axis2, 'CLim', [minInt, maxInt]);
-            set(axis3, 'CLim', [minInt, maxInt]);
+        set(axis1, 'CLim', intSlider.Value);
+        set(axis2, 'CLim', intSlider.Value);
+        set(axis3, 'CLim', intSlider.Value);
+        set(autoWindowButton, 'Enable', 'on');
+        curInt = [intSlider.Value(1) intSlider.Value(2)];
         end
     end
 
-    function scaleMinInt(minSlider, ~, ~)
-        oldVal=minInt;
-        newVal=get(minSlider, 'Value');
-        if newVal >= get(maxSlider, 'Value')
-            set(minSlider, 'Value', oldVal);
-            return;
-        else
-            minInt=newVal;
-            set(axis1, 'CLim', [minInt, maxInt]);
-            set(axis2, 'CLim', [minInt, maxInt]);
-            set(axis3, 'CLim', [minInt, maxInt]);
-            set(rotateResetButton, 'Enable', 'on');
-        end
+    function autoWindow(~,~)
+        set(axis1,     'CLim',  [autoMin, autoMax]);
+        set(axis2,     'CLim',  [autoMin, autoMax]);
+        set(axis3,     'CLim',  [autoMin, autoMax]);
+        set(intSlider, 'Value', [autoMin, autoMax]);
+        curInt = intSlider.Value;
     end
 
     function rotateA1(~, ~)
@@ -376,30 +415,17 @@ end
         else
             rotateUndo(1)=newVal;
             if get(cropRotate, 'Value')
-                temp=zeros(size(IM));
                 method='crop';
             else
-                temp=imrotate(IM(:,:,1), newVal, 'bicubic', 'loose');
-                temp=zeros(size(temp,1), size(temp,2), size(IM,3));
                 method='loose';
             end
-            wFig=waitbar(0, 'Performing 3D Rotation . . .');
-            for image3DRotationCounter = 1:size(IM,3)
-                temp(:,:,image3DRotationCounter)=imrotate(IM(:,:,image3DRotationCounter), newVal, 'bicubic', method);
-                waitbar(image3DRotationCounter/size(IM,3), wFig);
-            end
-            close(wFig);
-            IM=temp;
-            clear temp;
-            rotateReset(1) = rotateReset(1) + newVal;
-            set(rotateA1EditBox, 'String', num2str(rotateReset(1)));
+            IM = imrotate(IM, newVal, 'bicubic', method);
             set(P1, 'DrawingArea', [1,1,size(IM,2)-1,size(IM,1)-1]);
             set(P2, 'DrawingArea', [1,1,size(IM,3)-1,size(IM,1)-1]);
             set(P3, 'DrawingArea', [1,1,size(IM,3)-1,size(IM,2)-1]);
             updatePanel1;
             updatePanel2;
             updatePanel3;
-            set(rotateResetButton, 'Enable', 'on');
         end
     end
  
@@ -409,32 +435,21 @@ end
             set(rotateA2EditBox, 'String', rotateUndo(2));
         else
             rotateUndo(2) = newVal;
-            IM=permute(IM, [1 3 2]);
+            temp=permute(IM, [1 3 2]);
             if get(cropRotate, 'Value')
-                temp=zeros(size(IM));
                 method='crop';
             else
-                temp=imrotate(IM(:,:,1), newVal, 'bicubic', 'loose');
-                temp=zeros(size(temp,1), size(temp,2), size(IM,3));
                 method='loose';
             end
-            wFig=waitbar(0, 'Performing 3D Rotation . . .');
-            for ii = 1:size(IM,3)
-                temp(:,:,ii)=imrotate(IM(:,:,ii), newVal, 'bicubic', method);
-                waitbar(ii/size(IM,3), wFig);
-            end
-            close(wFig);
+            temp = imrotate(temp, newVal, 'bicubic', method);
             IM=ipermute(temp, [1 3 2]);
             clear temp;
-            rotateReset(2) = rotateReset(2) + newVal;
-            set(rotateA2EditBox, 'String', num2str(rotateReset(2)));
             set(P1, 'DrawingArea', [1,1,size(IM,2)-1,size(IM,1)-1]);
             set(P2, 'DrawingArea', [1,1,size(IM,3)-1,size(IM,1)-1]);
             set(P3, 'DrawingArea', [1,1,size(IM,3)-1,size(IM,2)-1]);
             updatePanel1;
             updatePanel2;
             updatePanel3;
-            set(rotateResetButton, 'Enable', 'on');
         end
     end
 
@@ -444,25 +459,15 @@ end
             set(rotateA3EditBox, 'String', num2str(rotateUndo(3)));
         else
             rotateUndo(3) = newVal;
-            IM=permute(IM, [3 2 1]);
+            temp=permute(IM, [3 2 1]);
             if get(cropRotate, 'Value')
-                temp=zeros(size(IM));
                 method='crop';
             else
-                temp=imrotate(IM(:,:,1), newVal, 'bicubic', 'loose');
-                temp=zeros(size(temp,1), size(temp,2), size(IM,3));
                 method='loose';
             end
-            wFig=waitbar(0, 'Performing 3D Rotation . . .');
-            for imageRotateCounter = 1:size(IM,3)
-                temp(:,:,imageRotateCounter)=imrotate(IM(:,:,imageRotateCounter), newVal, 'bicubic', method);
-                waitbar(imageRotateCounter/size(IM,3), wFig);
-            end
-            close(wFig);
+            temp = imrotate(temp, newVal, 'bicubic', method);
             IM=ipermute(temp, [3 2 1]);
             clear temp;
-            rotateReset(3) = rotateReset(3) + newVal;
-            set(rotateA3EditBox, 'String', num2str(rotateReset(3)));
             set(P1, 'DrawingArea', [1,1,size(IM,2)-1,size(IM,1)-1])
             set(P2, 'DrawingArea', [1,1,size(IM,3)-1,size(IM,1)-1])
             set(P3, 'DrawingArea', [1,1,size(IM,3)-1,size(IM,2)-1])
@@ -474,49 +479,6 @@ end
 
     function exportData(~, ~)
         assignin('base', 'v3_volume', IM);
-    end
-        
-    function resetRotations(~, ~)
-        numSteps=0;
-        if rotateReset(1) ~= 0
-            numSteps=size(IM,3);
-        end
-        if rotateReset(2) ~= 0
-            numSteps=numSteps+size(IM,2);
-        end
-        if rotateReset(3) ~= 0
-            numSteps=numSteps+size(IM,1);
-        end
-        resettingWaitbar=waitbar(0, 'Resetting the Rotations . . .');
-        if rotateReset(1) ~= 0
-            for imageRotateResetCounter = 1:size(IM,3)
-                IM(:,:,imageRotateResetCounter)=imrotate(IM(:,:,imageRotateResetCounter), -rotateReset(1), 'bicubic', method);
-                waitbar(imageRotateResetCounter/numSteps, resettingWaitbar);
-            end
-        end
-        if rotateReset(2) ~= 0
-            IM=permute(IM, [1 3 2]);
-            for jj = 1:size(IM,3)
-                IM(:,:,jj)=imrotate(IM(:,:,jj), -rotateReset(2), 'bicubic', method);
-                waitbar((ii+jj)/numSteps, resettingWaitbar);
-            end
-            IM=ipermute(IM, [1 3 2]);
-        end
-        if rotateReset(3) ~= 0
-            IM=permute(IM, [3 2 1]);
-            for kk = 1:size(IM,3)
-                IM(:,:,kk)=imrotate(IM(:,:,kk), -rotateReset(3), 'bicubic', method);
-                waitbar((ii+jj+kk)/numSteps, resettingWaitbar);
-            end
-            IM=ipermute(IM, [3 2 1]);
-        end
-        close(resettingWaitbar);
-        updatePanel1;
-        updatePanel2;
-        rotateReset = [0 0 0];
-        set(rotateA1EditBox, 'String', '0');
-        set(rotateA2EditBox, 'String', '0');
-        set(rotateA3EditBox, 'String', '0');
     end
 
     function specifySlice1(~, ~)
@@ -589,6 +551,19 @@ end
         pos3=get(P3, 'Position');
         sliceUndo(2) = pos3(1);
         sliceUndo(3) = pos3(2);
+    end
+
+    function capAxesRowHeight(fig, uigrid)
+        maxImgHeight = 900;
+        figHeight = fig.Position(4);
+        controlStripHeight = 80;   
+        availableHeight = figHeight - controlStripHeight;
+
+        if availableHeight > maxImgHeight
+            uigrid.RowHeight = {maxImgHeight, controlStripHeight};
+        else
+            uigrid.RowHeight = {'1x', controlStripHeight};
+        end
     end
 
 end
